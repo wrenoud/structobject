@@ -27,7 +27,7 @@ Object instances of the `Point` class, which extends the `structObject`, can be 
 >>> print p.items()
 [('x',5000.0), ('y', 300.5)]
 ```
-Alternately, the object can be initialized with our values. The parameter order should match the order specified in the class attribute `_order`.
+Alternately, the object can be initialized with our values. The parameter order should match the order specified in the class attribute `_field_order`.
 ```Python
 >>> p = Point(5000.0, 300.5)
 >>> print p.items()
@@ -114,7 +114,7 @@ class Path(structObject):
     # the points
     points = struct_array(
         object_type = Point,
-        len = lamdba self: self.point_count
+        len = lambda self: self.point_count
     )
 ```
 
