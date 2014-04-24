@@ -28,6 +28,7 @@ class structField(object):
     """
     __slots__ = (
     '_parent',
+    '_variable_length',
     '_static', # bool, indicates weith value can be set
     #'fmt',
     'python_type',
@@ -37,6 +38,7 @@ class structField(object):
     'generator',
     'validator',
     'doc')
+    _variable_length = False
     setter = (lambda x: x,)
     getter = (lambda x: x,)
     generator = None
@@ -109,6 +111,7 @@ class structField(object):
 # attributes (passed into the factories as named parameters) that all
 # subclassses have in common
 _standard_parameters = [
+        'len',
         'value',
         'getter',
         'setter',

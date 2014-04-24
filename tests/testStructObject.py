@@ -51,10 +51,14 @@ class structObjectTests(unittest.TestCase):
         p = Point({'x':5000.0, 'y':300.5})
         self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
 
-    def testBinaryDouble(self):
+    def testPack(self):
         p = Point(5000.0, 300.5)
         self.assertEqual(p.pack(), struct.pack('dd', 5000.0, 300.5))
 
+    def testPackWithSubstructure(self):
+        bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
+        self.assertEqual(bb.pack(), struct.pack('dddd', 0.0, 10.0, 15.0, 0.0))
+            
     def testGetItemWithString(self):
         bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
         self.assertEqual(bb['northwest.y'], 10.0)

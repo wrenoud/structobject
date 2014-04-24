@@ -62,8 +62,31 @@ class metaclassFactory(type):
                 class_attr['_constructors'].append(class_attr[name])
                 del(class_attr[name])
 
+            # compile segments
+            class_attr['_segments'] = []
+            fmt = _byte_order
+            start = 0
+            for i,name in enumerate(_field_order):
+                constructor = class_attr['_constructors'][i]
+                if issubclass(constructor, structField) and not constructor._variable_length:
+                    fmt += constructor.fmt
+                elif issubclass(constructor, structObject):
+                    if len(fmt) > 1:
+                        class_attr['_segments'].append(structSegment(fmt,start,i))
+                        fmt = _byte_order
+                    class_attr['_segments'].append(i)
+                    start = i + 1
+            if len(fmt) > 1:
+                class_attr['_segments'].append(structSegment(fmt,start,i+1))
         return type.__new__(metaclass, class_name, class_bases, class_attr)
 
+class structSegment(struct.Struct):
+    __slots__ = ('slice')
+
+    def __init__(self, fmt, start, end):
+        super(structSegment, self).__init__(fmt)
+        self.slice = slice(start, end)
+        
 
 class structObject(object):
     """The base class that scaffolding is used to build out
@@ -76,7 +99,7 @@ class structObject(object):
     __slots__ = (
         '_field_order', # field order, reqired for any 'first generation' subclass
         '_constructors',
-        #'_segments', # array, holds compiled structs, needed in case there is a substructure, variable array, string, or pascal
+        '_segments', # array, holds compiled structs, needed in case there is a substructure, variable array, string, or pascal
         '_byte_order',
         '_values'
     )
@@ -97,9 +120,12 @@ class structObject(object):
             
         # TODO check that len(args[0]) <= len(self)
         if len(args) == 0 and len(kargs) == 0:
-            for i,name in enumerate(self._field_order):
+            for i, name in enumerate(self._field_order):
                 constructor = getattr(self,'_constructors')[i]
-                self._values.append(constructor(self))
+                if issubclass(constructor, structField):
+                    self._values.append(constructor(self))
+                elif issubclass(constructor, structObject):
+                    self._values.append(constructor())
         elif len(args) == 1 and isinstance(args[0], (str, buffer)):
             pass # parse binary
         else:
@@ -216,11 +242,21 @@ class structObject(object):
 
     def pack(self):
         s = ''
+        for seg in self._segments:
+            if isinstance(seg, structSegment):
+                s += seg.pack(*self.__getitem__(seg.slice))
+            elif isinstance(seg, int):
+                s += self._values[seg].pack()
+        return s
+
+    def _pack(self):
+        "Old style packing, goes element by element"
+        s = ''
         for v in self._values:
             if isinstance(v, structField):
                 s += struct.pack(self._byte_order + v.fmt, v.prep())
             elif isinstance(v, structObject):
-                s += v.pack()
+                s += v._pack()
         return s
     # def iteritems(self): pass
     # def iterkeys(self): pass
