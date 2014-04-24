@@ -36,7 +36,7 @@ class metaclassFactory(type):
                 class_attr['_field_order'] = _base._field_order
             _field_order = class_attr['_field_order']
 
-            class_attr['__slots__'] = class_attr['_field_order']
+            class_attr['__slots__'] = ()
             
             # default byte order uses native with standard sizes and no alignment
             if '_byte_order' not in class_attr and _base == structObject:
