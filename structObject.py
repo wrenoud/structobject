@@ -64,12 +64,6 @@ class metaclassFactory(type):
 
         return type.__new__(metaclass, class_name, class_bases, class_attr)
 
-        
-def _isinstance(self, obj, *args):
-    "Convenience function to test obj against multiple types."
-    for obj_type in args:
-        if isinstance(obj,obj_type): return True
-    return False
 
 class structObject(object):
     """The base class that scaffolding is used to build out
@@ -106,7 +100,7 @@ class structObject(object):
             for i,name in enumerate(self._field_order):
                 constructor = getattr(self,'_constructors')[i]
                 self._values.append(constructor(self))
-        elif len(args) == 1 and _isinstance(args[0],str, buffer):
+        elif len(args) == 1 and isinstance(args[0], (str, buffer)):
             pass # parse binary
         else:
             for i,name in enumerate(self._field_order):
