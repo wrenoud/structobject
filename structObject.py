@@ -150,9 +150,9 @@ class structObject(object):
         elif name in self._field_order:
             i = self._index(name)
             obj = self._values[i]
-            if hasattr(obj, 'set'):
+            if issubclass(obj.__class__, structField):
                 obj.set(value)
-            else:
+            elif issubclass(obj.__class__, structObject):
                 self._values[i] = value # probably setting a substructure
                 # TODO, make sure they're not abusing this
         else:
@@ -161,12 +161,10 @@ class structObject(object):
     def __getitem__(self, key):
         if isinstance(key, str):
             if '.' in key:
-                obj = None
-                for attr in key.split('.'):
-                    if obj == None: # first item
-                        obj = self.__getattr__(attr)
-                    else:
-                        obj = obj.__getattr__(attr)
+                _field_names = key.split('.')
+                obj = self.__getattr__(_field_names[0])
+                for _field_name in _field_names[1:]:
+                    obj = obj.__getattr__(_field_name)
                 return obj
             else:
                 return self.__getattr__(key)
@@ -176,8 +174,8 @@ class structObject(object):
             else:
                 raise IndexError("Index: {} not in object".format(key))
         elif isinstance(key, slice):
-            _objs = self._values[key]
             _return = []
+            _objs = self._values[key]
             for obj in _objs:
                 if issubclass(obj.__class__, structField):
                     _return.append(obj.get())
@@ -188,7 +186,28 @@ class structObject(object):
             raise Exception("Unrecognized index: {}".format(key))
         # support substructures
             # i.e. (test) obj.field.subfield1 == obj['field.subfield1']
-    def __setitem__(self, key, item): pass
+    def __setitem__(self, key, item):
+        if isinstance(key, str):
+            if '.' in key:
+                _field_names = key.split('.')
+                obj = self.__getattr__(_field_names[0])
+                for _field_name in _field_names[1:-1]:
+                    obj = obj.__getattr__(_field_name)
+                obj.__setattr__(_field_names[-1], item)
+            else:
+                return self.__setattr__(key, item)
+        elif isinstance(key, int):
+            if key < len(self._field_order):
+                return self.__setattr__(self._field_order[key], item)
+            else:
+                raise IndexError("Index: {} not in object".format(key))
+        elif isinstance(key, slice):
+            _fields = self._field_order[key]
+            for i, _field in enumerate(_fields):
+                self.__setattr__(_field, item[i])
+        else:
+            raise Exception("Unrecognized index: {}".format(key))
+            
     #def __iter__(self): pass
     #def __contains__(self, key): pass
     

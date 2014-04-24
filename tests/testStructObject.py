@@ -75,7 +75,32 @@ class structObjectTests(unittest.TestCase):
         p = Point(5000.0, 300.5)
         self.assertRaises(Exception, p.__getitem__, int)
         
-        
+    def testSetItemWithString(self):
+        bb = BoundingBox()
+        bb['northwest.y'] = 15.0
+        self.assertEqual(bb.northwest.y, 15.0)
+        bb.northwest['y'] = 20.0
+        self.assertEqual(bb.northwest.y, 20.0)
+
+    def testSetItemWithInt(self):
+        p = Point()
+        p[1] = 300.5
+        self.assertEqual(p.y, 300.5)
+        self.assertRaises(IndexError, p.__setitem__, 3, 500.0)
+
+    def testSetItemWithSlice(self):
+        p = Point()
+        p[:] = [5000.0, 300.5]
+        self.assertEqual(p.values(), [5000.0, 300.5])
+        p[:1] = [5000.0]
+        self.assertEqual(p.x, 5000.0)
+        p[1:] = [300.5]
+        self.assertEqual(p.y, 300.5)
+
+    def testSetItemWithObj(self):
+        p = Point()
+        self.assertRaises(Exception, p.__setitem__, int)
+
 # no exception should be raised if parent has '_order' defined
 
 # trying to define a class with multiple parents should raise exception
