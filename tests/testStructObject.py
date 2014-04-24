@@ -12,6 +12,11 @@ class Point(structObject):
     x = ctype_double()
     y = ctype_double()
 
+class BoundingBox(structObject):
+    _field_order = ('northwest','southeast')
+    northwest = Point
+    southeast = Point
+
 class structObjectTests(unittest.TestCase):
     # if length is specified it should be an array or 's'
     def testOrder(self):
@@ -49,6 +54,27 @@ class structObjectTests(unittest.TestCase):
     def testBinaryDouble(self):
         p = Point(5000.0, 300.5)
         self.assertEqual(p.pack(), struct.pack('dd', 5000.0, 300.5))
+
+    def testGetItemWithString(self):
+        bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
+        self.assertEqual(bb['northwest.y'], 10.0)
+        self.assertEqual(bb.northwest['y'], 10.0)
+
+    def testGetItemWithInt(self):
+        p = Point(5000.0, 300.5)
+        self.assertEqual(p[1], 300.5)
+        self.assertRaises(IndexError, p.__getitem__, 3)
+        
+    def testGetItemWithSlice(self):
+        p = Point(5000.0, 300.5)
+        self.assertEqual(p[:], [5000.0, 300.5])
+        self.assertEqual(p[:1], [5000.0])
+        self.assertEqual(p[1:], [300.5])
+
+    def testGetItemWithObj(self):
+        p = Point(5000.0, 300.5)
+        self.assertRaises(Exception, p.__getitem__, int)
+        
         
 # no exception should be raised if parent has '_order' defined
 

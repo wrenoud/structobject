@@ -121,18 +121,22 @@ class structObject(object):
                     self._values.append(constructor(self))
             for key, value in kargs.iteritems():
                 # replace named values
-                i = self._field_order.index(key)
+                i = self._index(key)
                 constructor = getattr(self,'_constructors')[i]
 
                 if isinstance(value, constructor):
                     self._values[i] = value
                 else:
                     self._values[i] = constructor(self,value)
+
+    def _index(self, name):
+        "Returns the index of the given named field"
+        return self._field_order.index(name)
     
     def __len__(self): pass
     def __getattr__(self, name):
         if name in self._field_order:
-            i = self._field_order.index(name)
+            i = self._index(name)
             obj = self._values[i]
             if issubclass(obj.__class__, structField):
                 return obj.get()
@@ -144,7 +148,7 @@ class structObject(object):
         if name.startswith('_'):
             object.__setattr__(self,name,value)
         elif name in self._field_order:
-            i = self._field_order.index(name)
+            i = self._index(name)
             obj = self._values[i]
             if hasattr(obj, 'set'):
                 obj.set(value)
@@ -154,12 +158,39 @@ class structObject(object):
         else:
             raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
-    def __getitem__(self, key): pass
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            if '.' in key:
+                obj = None
+                for attr in key.split('.'):
+                    if obj == None: # first item
+                        obj = self.__getattr__(attr)
+                    else:
+                        obj = obj.__getattr__(attr)
+                return obj
+            else:
+                return self.__getattr__(key)
+        elif isinstance(key, int):
+            if key < len(self._field_order):
+                return self.__getattr__(self._field_order[key])
+            else:
+                raise IndexError("Index: {} not in object".format(key))
+        elif isinstance(key, slice):
+            _objs = self._values[key]
+            _return = []
+            for obj in _objs:
+                if issubclass(obj.__class__, structField):
+                    _return.append(obj.get())
+                elif issubclass(obj.__class__, structObject):
+                    _return.append(obj)
+            return _return
+        else:
+            raise Exception("Unrecognized index: {}".format(key))
         # support substructures
             # i.e. (test) obj.field.subfield1 == obj['field.subfield1']
     def __setitem__(self, key, item): pass
-    def __iter__(self): pass
-    def __contains__(self, key): pass
+    #def __iter__(self): pass
+    #def __contains__(self, key): pass
     
     def items(self): return zip(self.keys(),self.values())
     def keys(self): return self._field_order
