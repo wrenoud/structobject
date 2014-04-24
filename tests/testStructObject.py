@@ -125,6 +125,14 @@ class structObjectTests(unittest.TestCase):
             
         bb = BoundingBox3D(Point3D(10.0,20.0,30.0))
         self.assertEqual(bb.northwest.z, 30.0)
+
+    def testInitWithWrongObjectTypeForField(self):
+        self.assertRaises(TypeError, BoundingBox, Point3D())
+
+    def testSetAttrWithWrongObjectTypeForField(self):
+        bb = BoundingBox()
+        p = Point3D()
+        self.assertRaises(TypeError, bb.__setattr__,'northwest', p)
         
 # no exception should be raised if parent has '_order' defined
 

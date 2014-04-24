@@ -141,10 +141,14 @@ class structObject(object):
                 # assign order parameter and defaults for remainder
                 constructor = getattr(self,'_constructors')[i]
                 if i < len(args):
-                    if isinstance(args[i], constructor):
-                        self._values.append(args[i])
-                    else:
-                        self._values.append(constructor(self,args[i]))
+                    value = args[i]
+                    if issubclass(constructor, structField):
+                        self._values.append(constructor(self,value))
+                    elif issubclass(constructor, structObject):
+                        if isinstance(value, constructor):
+                            self._values.append(value)
+                        else:
+                            raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
                 else:
                     self._values.append(constructor(self))
             for key, value in kargs.iteritems():
@@ -177,12 +181,14 @@ class structObject(object):
             object.__setattr__(self,name,value)
         elif name in self._field_order:
             i = self._index(name)
-            obj = self._values[i]
-            if issubclass(obj.__class__, structField):
-                obj.set(value)
-            elif issubclass(obj.__class__, structObject):
-                self._values[i] = value # probably setting a substructure
-                # TODO, make sure they're not abusing this
+            constructor = self._constructors[i]
+            if issubclass(constructor, structField):
+                self._values[i].set(value)
+            elif issubclass(constructor, structObject):
+                if isinstance(value, constructor):
+                    self._values[i] = value # probably setting a substructure
+                else:
+                    raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
         else:
             raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
