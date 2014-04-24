@@ -58,9 +58,18 @@ class metaclassFactory(type):
             # TODO, check super for attribute
             for i,name in enumerate(_field_order):
                 if name not in class_attr:
-                    raise Exception("Attribute '{}' included in '_field_order' but not defined".format(name))
-                class_attr['_constructors'].append(class_attr[name])
-                del(class_attr[name])
+                    if _base != structObject:
+                        # grab from superclass if this is an overloaded subclass
+                        constructor = _base._constructors[i]
+                    else:
+                        raise Exception("Attribute '{}' included in '_field_order' but not defined".format(name))
+                else:
+                    constructor = class_attr[name]
+                    del(class_attr[name])
+                if constructor == None:
+                    class_attr['_constructors'].append(Empty)
+                else:
+                    class_attr['_constructors'].append(constructor)
 
             # compile segments
             class_attr['_segments'] = []
@@ -86,7 +95,6 @@ class structSegment(struct.Struct):
     def __init__(self, fmt, start, end):
         super(structSegment, self).__init__(fmt)
         self.slice = slice(start, end)
-        
 
 class structObject(object):
     """The base class that scaffolding is used to build out
@@ -261,3 +269,11 @@ class structObject(object):
     # def iteritems(self): pass
     # def iterkeys(self): pass
     # def itervalues(self): pass
+
+class Empty(structObject):
+    """Placeholder for fields intented to be defined in overloaded subclasses"""
+    _field_order = []
+    def __init__(self):
+        raise NotImplemented('None type fields must be implemented in subclasses')
+        
+        
