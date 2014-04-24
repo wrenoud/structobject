@@ -12,10 +12,18 @@ class Point(structObject):
     x = ctype_double()
     y = ctype_double()
 
+class Point3D(structObject):
+    "Basic point class"
+    _field_order = ('x','y','z')
+    x = ctype_double()
+    y = ctype_double()
+    z = ctype_double()
+    
 class BoundingBox(structObject):
     _field_order = ('northwest','southeast')
     northwest = Point
     southeast = Point
+
 
 class structObjectTests(unittest.TestCase):
     # if length is specified it should be an array or 's'
@@ -105,6 +113,19 @@ class structObjectTests(unittest.TestCase):
         p = Point()
         self.assertRaises(Exception, p.__setitem__, int)
 
+    def testOverloading(self):
+        class GenericBoundingBox(structObject):
+            _field_order = ('northwest','southeast')
+            northwest = None
+            southeast = None
+            
+        class BoundingBox3D(GenericBoundingBox):
+            northwest = Point3D
+            southeast = Point3D
+            
+        bb = BoundingBox3D(Point3D(10.0,20.0,30.0))
+        self.assertEqual(bb.northwest.z, 30.0)
+        
 # no exception should be raised if parent has '_order' defined
 
 # trying to define a class with multiple parents should raise exception
