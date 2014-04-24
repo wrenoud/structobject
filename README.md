@@ -72,7 +72,7 @@ We're going to reuse the `Point` class to describe a rectangular bounding box wi
 
 ```Python
 class BoundingBox(structObject):
-    _field_order = ('northwest','southeast)
+    _field_order = ('northwest','southeast')
     northwest = Point
     southeast = Point
 ```
@@ -93,6 +93,40 @@ Let's try that again but with some points
 10.0
 >>> print bb.southeast.x
 15.0
+```
+
+Overloading
+-----------
+
+Subclasses of structObject can be extended and overloaded. This can be especially handy if you have a standard structure that you don't want to redefine.
+
+Here we're going to make a simple datagram structure with a start and end flag, a timestamp and some arbitrary body that we'll overload in a second.
+
+```Python
+class GenericDatagram(structObject):
+    _field_order = ('STX','timestamp','body','ETX')
+    STX = ctype_uchar(value=0x02)
+    timestamp = ctype_uint()
+    body = None
+    ETX = ctype_uchar(value=0x03)
+```
+
+Now that we have generic datagram lets make it a wrapper on the BoundingBox structure we defined earlier as an extension of the GenericDatagram structure.
+
+```Python
+class BoundingBoxDatagram(GenericDatagram):
+    body = BoundingBox
+```
+
+That's it. Lets create one of this. We'll set the timestamp and get the binary.
+
+```Python
+>>> p = BoundingBoxDatagram()
+>>> p.timestamp = time.time()
+>>> p.items()
+[('STX', 2), ('timestamp', 1398373100.412985), ('body', <__main__.BoundingBox object at 0xb713f3c4>), ('ETX', 3)]
+>>> p.pack()
+'\x02\xeczYS\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03'
 ```
 
 Arrays of Substructures
