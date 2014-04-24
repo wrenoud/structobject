@@ -28,7 +28,7 @@ class structField(object):
     """
     __slots__ = (
     '_parent',
-    '_variable_length',
+    '_variable_length', # used for future support of array types, indicates field should not be included in static segment
     '_static', # bool, indicates weith value can be set
     #'fmt',
     'python_type',
