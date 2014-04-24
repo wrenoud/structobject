@@ -50,11 +50,10 @@ Or mix the two (just remeber that after the first named parameter subsequent par
 [('x',5000.0), ('y', 300.5)]
 ```
 
-To get the binary representation just cast the object as a string
+To get the binary representation just call the class method `pack`
 
 ```Python
->>> binary_data = str(p)
->>> binary_data
+>>> p.pack()
 '\x00\x00\x00\x00\x00\x88\xb3@\x00\x00\x00\x00\x00\xc8r@'
 ```
 
