@@ -129,7 +129,7 @@ class structObject(object):
         # TODO check that len(args[0]) <= len(self)
         if len(args) == 0 and len(kargs) == 0:
             for i, name in enumerate(self._field_order):
-                constructor = getattr(self,'_constructors')[i]
+                constructor = self._constructors[i]
                 if issubclass(constructor, structField):
                     self._values.append(constructor(self))
                 elif issubclass(constructor, structObject):
@@ -139,7 +139,7 @@ class structObject(object):
         else:
             for i,name in enumerate(self._field_order):
                 # assign order parameter and defaults for remainder
-                constructor = getattr(self,'_constructors')[i]
+                constructor = self._constructors[i]
                 if i < len(args):
                     value = args[i]
                     if issubclass(constructor, structField):
@@ -151,15 +151,8 @@ class structObject(object):
                             raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
                 else:
                     self._values.append(constructor(self))
-            for key, value in kargs.iteritems():
-                # replace named values
-                i = self._index(key)
-                constructor = getattr(self,'_constructors')[i]
-
-                if isinstance(value, constructor):
-                    self._values[i] = value
-                else:
-                    self._values[i] = constructor(self,value)
+            if len(kargs) > 0:
+                self.update(kargs)
 
     def _index(self, name):
         "Returns the index of the given named field"
@@ -254,6 +247,28 @@ class structObject(object):
         return l
         #return [self.__getattr__(name) for name in self._field_order]
 
+    def update(self, *args, **kargs):
+        "Same functionality as dict.update(). "
+        # if unnamed parameters used lets update the kargs and work from there
+        if len(args) == 1:
+            if isinstance(args[0], dict):
+                # named parameters take precedence
+                _tmp = args[0]
+                _tmp.update(kargs)
+                kargs = args[0]
+            elif isinstance(args[0], (list, tuple)):
+                # named parameters take precedence
+                _tmp = dict(args[0])
+                _tmp.update(kargs)
+                kargs = _tmp
+            else:
+                raise TypeError("parameter type '{}' not supported by update".format(args[0].__class__.__name__))
+        elif len(args) > 1:
+            raise TypeError('update expected at most 1 arguments, got {}'.format(len(args)))
+
+        for key, value in kargs.iteritems():
+            self.__setattr__(key,value)
+            
     def pack(self):
         s = ''
         for seg in self._segments:
@@ -280,6 +295,6 @@ class Empty(structObject):
     """Placeholder for fields intented to be defined in overloaded subclasses"""
     _field_order = []
     def __init__(self):
-        raise NotImplemented('None type fields must be implemented in subclasses')
+        raise NotImplementedError('None type fields must be implemented in subclasses')
         
         

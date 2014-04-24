@@ -126,6 +126,13 @@ class structObjectTests(unittest.TestCase):
         bb = BoundingBox3D(Point3D(10.0,20.0,30.0))
         self.assertEqual(bb.northwest.z, 30.0)
 
+    def testOverloadingNotImplemented(self):
+        class GenericBoundingBox(structObject):
+            _field_order = ('northwest','southeast')
+            northwest = None
+            southeast = None
+        self.assertRaises(NotImplementedError,GenericBoundingBox)
+        
     def testInitWithWrongObjectTypeForField(self):
         self.assertRaises(TypeError, BoundingBox, Point3D())
 
@@ -133,7 +140,42 @@ class structObjectTests(unittest.TestCase):
         bb = BoundingBox()
         p = Point3D()
         self.assertRaises(TypeError, bb.__setattr__,'northwest', p)
-        
+
+    def testUpdateWithDict(self):
+        p = Point()
+        p.update({'y':300.5,'x':5000.0})
+        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+
+    def testUpdateWithList(self):
+        p = Point()
+        p.update([('y',300.5),('x',5000.0)])
+        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+
+    def testUpdateWithNamed(self):
+        p = Point()
+        p.update(y=300.5,x=5000.0)
+        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+
+    def testUpdateWithBoth(self):
+        p = Point()
+        p.update({'y':300.5},x=5000.0)
+        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        p.update([('y',400.5)],x=6000.0)
+        self.assertEqual(p.items(),[('x', 6000.0), ('y', 400.5)])
+
+    def testUpdateWithBothOrderPrecidence(self):
+        p = Point()
+        p.update({'x':6000.0},x=5000.0)
+        self.assertEqual(p.x,5000.0)
+
+    def testUpdateWithBadType(self):
+        p = Point()
+        self.assertRaises(TypeError, p.update, 5000.0)
+
+    def testUpdateWithTooManyParameters(self):
+        p = Point()
+        self.assertRaisesRegexp(TypeError, "update expected at most 1 arguments, got 2", p.update, 5000.0, 6000.0)
+            
 # no exception should be raised if parent has '_order' defined
 
 # trying to define a class with multiple parents should raise exception
