@@ -22,12 +22,11 @@ class metaclassFactory(type):
 
         # we don't need to do anything to the abstract super class, so skip this
         if class_name != 'structObject':
-            print class_attr
-
             if len(class_bases) > 1:
                 raise Exception("multiple super classes not implemented")
             _base = class_bases[0]
-            
+
+            # some error handling
             if '_field_order' in class_attr and _base != structObject:
                 raise Exception("Only subclasses of structObject may define '_field_order' attribute")
             elif '_field_order' not in class_attr and _base == structObject:
@@ -56,6 +55,7 @@ class metaclassFactory(type):
 
             class_attr['_constructors'] = []
             # makes sure attribute in _field_order are defined
+            # TODO, check super for attribute
             for i,name in enumerate(_field_order):
                 if name not in class_attr:
                     raise Exception("Attribute '{}' included in '_field_order' but not defined".format(name))
@@ -93,28 +93,24 @@ class structObject(object):
     def __init__(self, *args, **kargs):
         """Populate instance based on subclass scaffolding"""
         self._values = []
+
+        # handle special cases where list or dict used
+        if len(args) == 1 and isinstance(args[0], (list, tuple)):
+            args = args[0]
+        elif len(args) == 1 and isinstance(args[0],dict):
+            kargs = args[0]
+            args=[]
+            
+        # TODO check that len(args[0]) <= len(self)
         if len(args) == 0 and len(kargs) == 0:
             for i,name in enumerate(self._field_order):
                 constructor = getattr(self,'_constructors')[i]
                 self._values.append(constructor(self))
         elif len(args) == 1 and _isinstance(args[0],str, buffer):
             pass # parse binary
-        elif len(args) == 1 and _isinstance(args[0], list, tuple):
-            for i,name in enumerate(self._field_order):
-                constructor = getattr(self,'_constructors')[i]
-                if i < len(args[0]):
-                    if isinstance(args[0][i], constructor):
-                        self._values.append(args[0][i])
-                    else:
-                        self._values.append(constructor(self,args[0][i]))
-                else:
-                    self._values.append(constructor(self))
-            # check that len(args[0]) <= len(self)
-            # note: current implementation won't navigate substructures
-        elif len(args) == 1 and isinstance(args[0],dict):
-            pass # populate named values, raise exception if key without attr
         else:
             for i,name in enumerate(self._field_order):
+                # assign order parameter and defaults for remainder
                 constructor = getattr(self,'_constructors')[i]
                 if i < len(args):
                     if isinstance(args[i], constructor):
@@ -124,6 +120,7 @@ class structObject(object):
                 else:
                     self._values.append(constructor(self))
             for key, value in kargs.iteritems():
+                # replace named values
                 i = self._field_order.index(key)
                 constructor = getattr(self,'_constructors')[i]
 
@@ -184,64 +181,3 @@ class structObject(object):
     # def iteritems(self): pass
     # def iterkeys(self): pass
     # def itervalues(self): pass
-
-if __name__ == "__main__":
-    from structField import *
-
-    class Point(structObject):
-        "Basic point class"
-        _field_order = ('x','y')
-        x = ctype_double()
-        y = ctype_double()
-    
-    p = Point()
-    print p.items()
-    p.x = 5000.0
-    p.y = 300.5
-    print p.x, p.y
-    print p.items(), p._values
-
-    p = Point(5000.0, 300.5)
-    print p.items(), p._values
-
-    p = Point(y=300.5, x=5000.0)
-    print p.items(), p._values
-
-    p = Point(5000.0, y=300.5)
-    print p.items(), p._values
-    import binascii
-    print binascii.hexlify(p.pack())
-
-    class BoundingBox(structObject):
-       _field_order = ('northwest','southeast')
-       northwest = Point
-       southeast = Point
-    bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
-    print bb.items()
-    print "Getting stuff"
-    print bb.northwest.keys()
-    print bb.northwest.x
-    print bb.northwest.y
-    print bb.southeast.x
-
-
-    class myHeader(structObject):
-        _field_order = ('STX','model')
-        STX = ctype_char(value='0x02')
-        model = ctype_int()
-        
-    class myFooter(structObject):
-        _field_order = ('ETX',)
-        ETX = ctype_char(value='0x03')
-            
-    class BaseClass(structObject):
-        _field_order = ('header','body','footer')
-            
-        header = myHeader
-        body = None
-        footer = myFooter
-        
-    class subClass(BaseClass):
-        body = Point
-
-    print subClass().items()
