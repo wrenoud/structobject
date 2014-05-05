@@ -153,7 +153,10 @@ class structObject(object):
                         else:
                             raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
                 else:
-                    self._values.append(constructor(self))
+                    if issubclass(constructor, structField):
+                        self._values.append(constructor(self))
+                    elif issubclass(constructor, structObject):
+                        self._values.append(constructor())
             if len(kargs) > 0:
                 self.update(kargs)
             

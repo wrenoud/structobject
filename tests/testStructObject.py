@@ -191,6 +191,21 @@ class structObjectTests(unittest.TestCase):
         p = Point3D()
         self.assertEqual(len(bb),2)
         self.assertEqual(len(p),3)
+        
+    def testOverloading(self):
+        # covers fix #1
+        class GenericDatagram(structObject):
+            _field_order = ('STX','timestamp','body','ETX')
+            STX = ctype_uchar(value=0x02)
+            timestamp = ctype_uint()
+            body = None
+            ETX = ctype_uchar(value=0x03)
+            
+        class BoundingBoxDatagram(GenericDatagram):
+            body = BoundingBox
+                
+        bbgram = BoundingBoxDatagram(timestamp=100)
+        self.assertEqual(bbgram.timestamp, 100)
             
 # no exception should be raised if parent has '_order' defined
 
