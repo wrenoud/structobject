@@ -175,6 +175,22 @@ class structObjectTests(unittest.TestCase):
     def testUpdateWithTooManyParameters(self):
         p = Point()
         self.assertRaisesRegexp(TypeError, "update expected at most 1 arguments, got 2", p.update, 5000.0, 6000.0)
+        
+    def testSize(self):
+        bb = BoundingBox()
+        self.assertEqual(bb.size,32)
+        
+    def testUnpack(self):
+        s = struct.pack('dddd', 0.0, 10.0, 15.0, 0.0)
+        bb = BoundingBox(s)
+        self.assertEqual(bb.northwest.items(),[('x', 0.0), ('y', 10.0)])
+        self.assertEqual(bb.southeast.items(),[('x', 15.0), ('y', 0.0)])
+        
+    def testLen(self):
+        bb = BoundingBox()
+        p = Point3D()
+        self.assertEqual(len(bb),2)
+        self.assertEqual(len(p),3)
             
 # no exception should be raised if parent has '_order' defined
 

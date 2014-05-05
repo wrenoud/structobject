@@ -55,7 +55,6 @@ class metaclassFactory(type):
 
             class_attr['_constructors'] = []
             # makes sure attribute in _field_order are defined
-            # TODO, check super for attribute
             for i,name in enumerate(_field_order):
                 if name not in class_attr:
                     if _base != structObject:
@@ -125,7 +124,13 @@ class structObject(object):
         elif len(args) == 1 and isinstance(args[0],dict):
             kargs = args[0]
             args=[]
-            
+
+        # TODO this is the dumb way to populate, generates defaults first
+        _bin = ''
+        if len(args) == 1 and isinstance(args[0], (str, buffer)):
+            _bin = args[0]
+            args= []
+                
         # TODO check that len(args[0]) <= len(self)
         if len(args) == 0 and len(kargs) == 0:
             for i, name in enumerate(self._field_order):
@@ -134,8 +139,6 @@ class structObject(object):
                     self._values.append(constructor(self))
                 elif issubclass(constructor, structObject):
                     self._values.append(constructor())
-        elif len(args) == 1 and isinstance(args[0], (str, buffer)):
-            pass # parse binary
         else:
             for i,name in enumerate(self._field_order):
                 # assign order parameter and defaults for remainder
@@ -153,12 +156,27 @@ class structObject(object):
                     self._values.append(constructor(self))
             if len(kargs) > 0:
                 self.update(kargs)
-
+            
+        if _bin != '':
+            self.unpack(_bin)
+                    
     def _index(self, name):
         "Returns the index of the given named field"
         return self._field_order.index(name)
     
-    def __len__(self): pass
+    def __len__(self):
+        return len(self._field_order)
+    
+    def _size(self):
+        # returns the binary length, accessable through object attribute .size
+        s = 0
+        for seg in self._segments:
+            if isinstance(seg, structSegment):
+                s += seg.size
+            elif isinstance(seg, int):
+                s += self._values[seg].size
+        return s
+            
     def __getattr__(self, name):
         if name in self._field_order:
             i = self._index(name)
@@ -167,6 +185,8 @@ class structObject(object):
                 return obj.get()
             elif issubclass(obj.__class__, structObject):
                 return obj
+        elif name == 'size':
+            return self._size()
         raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
     def __setattr__(self, name, value):
@@ -268,7 +288,17 @@ class structObject(object):
 
         for key, value in kargs.iteritems():
             self.__setattr__(key,value)
-            
+    
+    def unpack(self, value):
+        offset = 0
+        for seg in self._segments:
+            if isinstance(seg, structSegment):
+                self.__setitem__(seg.slice, seg.unpack(buffer(value,offset,seg.size)))
+                offset += seg.size
+            elif isinstance(seg, int):
+                self._values[seg].unpack(buffer(value,offset))
+                offset += self._values[seg].size
+    
     def pack(self):
         s = ''
         for seg in self._segments:
