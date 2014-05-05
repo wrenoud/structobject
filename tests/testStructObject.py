@@ -192,7 +192,7 @@ class structObjectTests(unittest.TestCase):
         self.assertEqual(len(bb),2)
         self.assertEqual(len(p),3)
         
-    def testOverloading(self):
+    def testOverloadingFixesIssue1(self):
         # covers fix #1
         class GenericDatagram(structObject):
             _field_order = ('STX','timestamp','body','ETX')
@@ -206,16 +206,21 @@ class structObjectTests(unittest.TestCase):
                 
         bbgram = BoundingBoxDatagram(timestamp=100)
         self.assertEqual(bbgram.timestamp, 100)
-            
-# no exception should be raised if parent has '_order' defined
+        
+    def testOverloadingWithFieldOrderRaisesException(self):
+        class Generic(structObject):
+            _field_order = ('myfield',)
+            myfield = None
+        with self.assertRaises(Exception):
+            class Overload(Generic):
+                _field_order = ('myfield',)
+                myfield = Point
 
-# trying to define a class with multiple parents should raise exception
-
-# subclass shouldn't redefine order, exception should be raised
-
-# if field attribute is not int or function should raise exception
-# edge case, sub sub class has variable segment dependant on field defined in super, is this accesable?
-
+    def testNoFieldOrderRaisesException(self):
+        with self.assertRaises(Exception):
+            class Generic(structObject):
+                myfield = None
+                
 if __name__ == '__main__':
     unittest.main()
     
