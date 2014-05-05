@@ -1,6 +1,8 @@
 import sys
 import unittest
 import struct
+import calendar
+import time
 
 sys.path += ['..']
 from structObject import *
@@ -66,7 +68,31 @@ class structObjectTests(unittest.TestCase):
     def testPackWithSubstructure(self):
         bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
         self.assertEqual(bb.pack(), struct.pack('dddd', 0.0, 10.0, 15.0, 0.0))
+
+    def testPackWithSetter(self):
+        field = ctype_uint(
+            setter=calendar.timegm,
+            getter=time.gmtime
+        )
+        class Generic(structObject):
+            _field_order = ('timestamp',)
+            timestamp = field
+        
+        t = Generic(timestamp=time.gmtime(100))
+        self.assertEqual(t.pack(), struct.pack('I', 100))
+    
+    def testUnpackWithGetter(self):
+        field = ctype_uint(
+            setter=calendar.timegm,
+            getter=time.gmtime
+        )
+        class Generic(structObject):
+            _field_order = ('timestamp',)
+            timestamp = field
             
+        t = Generic(struct.pack('I', 100))
+        self.assertEqual(t.timestamp, time.gmtime(100))
+        
     def testGetItemWithString(self):
         bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
         self.assertEqual(bb['northwest.y'], 10.0)

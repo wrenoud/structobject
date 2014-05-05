@@ -296,7 +296,9 @@ class structObject(object):
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                self.__setitem__(seg.slice, seg.unpack(buffer(value,offset,seg.size)))
+                values = seg.unpack(buffer(value,offset,seg.size))
+                for i, field in enumerate(self._values[seg.slice]):
+                    field.unprep(values[i])
                 offset += seg.size
             elif isinstance(seg, int):
                 self._values[seg].unpack(buffer(value,offset))
@@ -306,7 +308,10 @@ class structObject(object):
         s = ''
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                s += seg.pack(*self.__getitem__(seg.slice))
+                prepped_items = []
+                for item in self._values[seg.slice]:
+                    prepped_items.append(item.prep())
+                s += seg.pack(*prepped_items)
             elif isinstance(seg, int):
                 s += self._values[seg].pack()
         return s
