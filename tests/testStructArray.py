@@ -42,7 +42,14 @@ class structArrayTests(unittest.TestCase):
         self.assertEqual(p.points[1].items(), [('x',10.0),('y',20.0)])
         self.assertEqual(p.point_count, 2)
         
-    
+    def testObjectTypeStructFieldWOLenIssue6(self):
+        class generic_string(structObject):
+            _field_order = ('text',)
+            text=struct_array(object_type=ctype_char())
+        
+        s = 'Hello World'
+        o = generic_string('Hello World')
+        self.assertEqual(o.text[:], [x for x in s])
         
 if __name__ == '__main__':
     unittest.main()

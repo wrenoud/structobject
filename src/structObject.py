@@ -399,7 +399,10 @@ class structArray(object):
             raise Exception("Unrecognized index: {}".format(key))
 
     def append(self, *args, **kargs):
-        obj = self.object_type(*args,**kargs)
+        if issubclass(self.object_type, structField):
+            obj = self.object_type(self._parent,*args)
+        elif issubclass(self.object_type, structObject):
+            obj = self.object_type(*args,**kargs)
         self._values.append(obj)
         
     def pack(self):
@@ -411,22 +414,22 @@ class structArray(object):
                 s += val.pack()
             return s
 
-    def unpack(self, value):
+    def unpack(self, bindata):
         if self.len != None:
             count = self.len[0](self._parent)
         else:
-            count = len(value) % self._item_size
+            count = len(bindata) - len(bindata) % self._item_size
         
         if issubclass(self.object_type, structField):
             # lets just unpack these all at once
             fmt = str(count)+self.object_type.fmt
-            values = struct.unpack(fmt, value[0:count*self._item_size])
+            values = struct.unpack(fmt, bindata[0:count*self._item_size])
             for value in values:
                 self.append(value)
         elif issubclass(self.object_type, structObject):
             for i in range(count):
                 offset = i * self._item_size
-                self.append(buffer(value,offset, offset + self._item_size))
+                self.append(buffer(bindata,offset, offset + self._item_size))
             
 
 def struct_array(**kargs):
