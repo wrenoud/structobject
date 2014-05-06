@@ -145,11 +145,15 @@ class Path(structObject):
         generator = lambda self: len(self.points)
     )
     # the points
-    points = struct_array(
+    points = structArray(
         object_type = Point,
         len = lambda self: self.point_count
     )
 ```
+
+The inline function for length (`len`) is called before a binary read (unpack) and is used for determining the read length.
+
+The generator on `point_count` is only called after the full structure is read.
 
 Explicit Byte Order
 -------------------

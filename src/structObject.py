@@ -1,5 +1,6 @@
 import struct
 import inspect
+
 from structField import structField
 
 native = '='
@@ -78,7 +79,7 @@ class metaclassFactory(type):
                 constructor = class_attr['_constructors'][i]
                 if issubclass(constructor, structField) and not constructor._variable_length:
                     fmt += constructor.fmt
-                elif issubclass(constructor, structObject):
+                elif issubclass(constructor, (structObject,structArray)):
                     if len(fmt) > 1:
                         class_attr['_segments'].append(structSegment(fmt,start,i))
                         fmt = _byte_order
@@ -135,7 +136,7 @@ class structObject(object):
         if len(args) == 0 and len(kargs) == 0:
             for i, name in enumerate(self._field_order):
                 constructor = self._constructors[i]
-                if issubclass(constructor, structField):
+                if issubclass(constructor, (structField,structArray)):
                     self._values.append(constructor(self))
                 elif issubclass(constructor, structObject):
                     self._values.append(constructor())
@@ -153,7 +154,7 @@ class structObject(object):
                         else:
                             raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
                 else:
-                    if issubclass(constructor, structField):
+                    if issubclass(constructor, (structField,structArray)):
                         self._values.append(constructor(self))
                     elif issubclass(constructor, structObject):
                         self._values.append(constructor())
@@ -186,7 +187,7 @@ class structObject(object):
             obj = self._values[i]
             if issubclass(obj.__class__, structField):
                 return obj.get()
-            elif issubclass(obj.__class__, structObject):
+            elif issubclass(obj.__class__, (structObject, structArray)):
                 return obj
         elif name == 'size':
             return self._size()
@@ -335,4 +336,89 @@ class Empty(structObject):
     def __init__(self):
         raise NotImplementedError('None type fields must be implemented in subclasses')
         
+class structArray(object):
+    # needs to implement size, pack, unpack, get/set-item
+    
+    __slots__ = (
+        'object_type',
+        '_variable_length', # used for future support of array types, indicates field should not be included in static segment
+        '_parent',
+        '_values',
+        '_item_size',
+        'len'
+    )
+    
+    def __init__(self, _parent):
+        self._parent = _parent
+        self._values = []
         
+        try:
+            self.len
+        except:
+            self.len = None
+            
+        if isinstance(self.len, int):
+            self._variable_length = False
+        else:
+            self._variable_length = True
+        
+    def __len__(self):
+        return len(self._values)    
+    
+    @property
+    def size(self):
+        return self._item_size * self.__len__()
+        
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            obj = self._values[key]
+            if issubclass(self.object_type, structField):
+                return obj.get()
+            elif issubclass(self.object_type, structObject):
+                return obj
+        elif isinstance(key, slice):
+            values = []
+            for i in key.indices(self.__len__()):
+                values.append(self.__getitem__(i))
+            return values
+        else:
+            raise Exception("Unrecognized index: {}".format(key))
+        
+    def __setitem__(self, key, value):
+        if isinstance(key, int):
+            if key < len(self._values):
+                self._values[key].set(value)
+            else:
+                raise IndexError("Index: {} not in object".format(key))
+        elif isinstance(key, slice):
+            for i, index in enumerate(key.indices(self.__len__())):
+                self._values[index].set(value[i])
+        else:
+            raise Exception("Unrecognized index: {}".format(key))
+
+    def append(self, *args, **kargs):
+        self._values.append(self.object_type(*args,**kargs))
+        
+    def pack(self):
+        if issubclass(self.object_type, structField):
+            return struct.pack(str(self.__len__())+self.object_type.fmt, *self._values)
+        elif issubclass(self.object_type, structObject):
+            s = ''
+            for val in self._values:
+                s += val.pack()
+            return s
+
+    def unpack(self): pass
+
+def struct_array(**kargs):
+    obj_dict = {
+        '__slots__':(),
+    }
+    obj_dict.update(kargs)
+    if issubclass(obj_dict['object_type'], structField):
+        obj_dict['_item_size'] = struct.calcsize(obj_dict['object_type'].fmt)
+    elif issubclass(obj_dict['object_type'], structObject):
+        obj_dict['_item_size'] = obj_dict['object_type']().size
+
+    return type('struct_array',(structArray,), obj_dict)
+    

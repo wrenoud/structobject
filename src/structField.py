@@ -80,8 +80,8 @@ class structField(object):
             raise AttributeError('Static field is not writeable')
         elif self.value == value:
             return
-        elif self.generator != None:
-            raise AttributeError('Generated field is not writeable')
+        #elif self.generator != None:
+            #raise AttributeError('Generated field is not writeable')
         else:
             if len(self.validator) > 0:
                 for val in self.validator:
@@ -91,7 +91,11 @@ class structField(object):
             self.value = value
 
     def prep(self):
-        _tmp = self.setter[0](self.get())
+        if self.generator != None:
+            val = self.generator(self._parent)
+        else:
+            val = self.get()
+        _tmp = self.setter[0](val)
         if not isinstance(_tmp, self.python_type):
             raise Warning("{} is not of type {}, trying coercion".format(self.get(), type(self.python_type())))
             _tmp = self.python_type(_tmp)
@@ -306,6 +310,3 @@ def ctype_string(**kargs):
     attrib_housekeeping(obj_dict, kargs, special_parameters)
     return type('ctype_string',(structField,), obj_dict)
         
-def struct_array(**kargs):
-    raise NotImplementedError()
-    

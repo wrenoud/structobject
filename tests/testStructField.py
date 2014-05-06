@@ -4,7 +4,7 @@ import time
 import calendar
 
 sys.path += ['..']
-from structField import *
+from src import *
 
 class structFieldTests(unittest.TestCase):
     def testFactories(self):

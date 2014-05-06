@@ -5,8 +5,7 @@ import calendar
 import time
 
 sys.path += ['..']
-from structObject import *
-from structField import *
+from src import *
 
 class Point(structObject):
     "Basic point class"
