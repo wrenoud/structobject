@@ -380,7 +380,7 @@ class structArray(object):
                 return obj
         elif isinstance(key, slice):
             values = []
-            for i in key.indices(self.__len__()):
+            for i in range(*key.indices(self.__len__())):
                 values.append(self.__getitem__(i))
             return values
         else:
@@ -419,7 +419,7 @@ class structArray(object):
         
         if issubclass(self.object_type, structField):
             # lets just unpack these all at once
-            fmt = str(self.__len__())+self.object_type.fmt
+            fmt = str(count)+self.object_type.fmt
             values = struct.unpack(fmt, value[0:count*self._item_size])
             for value in values:
                 self.append(value)
