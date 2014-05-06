@@ -263,7 +263,7 @@ class structObject(object):
     #def __contains__(self, key): pass
     
     def items(self): return zip(self.keys(),self.values())
-    def keys(self): return self._field_order
+    def keys(self): return self._field_order[:]
     def values(self):
         l = []
         for name in self._field_order:
