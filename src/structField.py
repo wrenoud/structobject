@@ -68,10 +68,10 @@ class structField(object):
         else:
             self._static = True
                             
-    def get(self):
-        if self.generator != None:
-            return self.generator(self._parent)
-        else:
+    def get(self, raw=False):
+        #if self.generator != None && raw == False:
+        #    return self.generator[0](self._parent)
+        #else:
             return self.value
 
 
@@ -92,7 +92,7 @@ class structField(object):
 
     def prep(self):
         if self.generator != None:
-            val = self.generator(self._parent)
+            val = self.generator[0](self._parent)
         else:
             val = self.get()
         _tmp = self.setter[0](val)
@@ -140,6 +140,8 @@ def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
         default_attrib['setter'] = (default_attrib['setter'],)
     if 'getter' in default_attrib:
         default_attrib['getter'] = (default_attrib['getter'],)
+    if 'generator' in default_attrib:
+        default_attrib['generator'] = (default_attrib['generator'],)
         
 def ctype_pad(**kargs):
     special_parameters = []

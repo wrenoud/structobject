@@ -323,6 +323,8 @@ class structObject(object):
         for v in self._values:
             if isinstance(v, structField):
                 s += struct.pack(self._byte_order + v.fmt, v.prep())
+            elif isinstance(v, structArray):
+                s += v.pack()
             elif isinstance(v, structObject):
                 s += v._pack()
         return s
@@ -397,7 +399,8 @@ class structArray(object):
             raise Exception("Unrecognized index: {}".format(key))
 
     def append(self, *args, **kargs):
-        self._values.append(self.object_type(*args,**kargs))
+        obj = self.object_type(*args,**kargs)
+        self._values.append(obj)
         
     def pack(self):
         if issubclass(self.object_type, structField):
@@ -408,7 +411,23 @@ class structArray(object):
                 s += val.pack()
             return s
 
-    def unpack(self): pass
+    def unpack(self, value):
+        if self.len != None:
+            count = self.len[0](self._parent)
+        else:
+            count = len(value) % self._item_size
+        
+        if issubclass(self.object_type, structField):
+            # lets just unpack these all at once
+            fmt = str(self.__len__())+self.object_type.fmt
+            values = struct.unpack(fmt, value[0:count*self._item_size])
+            for value in values:
+                self.append(value)
+        elif issubclass(self.object_type, structObject):
+            for i in range(count):
+                offset = i * self._item_size
+                self.append(buffer(value,offset, offset + self._item_size))
+            
 
 def struct_array(**kargs):
     obj_dict = {
@@ -419,6 +438,9 @@ def struct_array(**kargs):
         obj_dict['_item_size'] = struct.calcsize(obj_dict['object_type'].fmt)
     elif issubclass(obj_dict['object_type'], structObject):
         obj_dict['_item_size'] = obj_dict['object_type']().size
-
+    
+    if 'len' in obj_dict:
+        obj_dict['len'] = (obj_dict['len'],) # protect from becomeing class method
+    
     return type('struct_array',(structArray,), obj_dict)
     
