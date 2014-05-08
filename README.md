@@ -168,4 +168,27 @@ class Point(structObject):
     x = ctype_double()
     y = ctype_double()
 ```
+
+Custom Computed Attributes
 ------
+
+```Python
+class BetterBoundingBox(BoundingBox):
+    __slots__ = ('area',)
+    def __init__(self, *args, **kargs):
+        super(BetterBoundingBox,self).__init__(*args, **kargs)
+        
+        self.area = (self.southeast.x - self.northwest.x) * \
+                    (self.northwest.y - self.southeast.y)
+```
+
+Note that we need to pass through the `args` and `kargs` to the superclass initializing function.
+Additionally any custom attributes need to listed in `__slots__`.
+
+Lets try it out.
+
+```Python
+>>> bb = BetterBoundingBox(Point(0,10),Point(10,0))
+>>> print bb.area
+100
+```
