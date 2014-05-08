@@ -27,7 +27,7 @@ class metaclassFactory(type):
                 raise Exception("multiple super classes not implemented")
             _base = class_bases[0]
 
-            # some error handling
+            # make sure _field_order is defined, and only once per superclass
             if '_field_order' in class_attr and _base != structObject:
                 raise Exception("Only subclasses of structObject may define '_field_order' attribute")
             elif '_field_order' not in class_attr and _base == structObject:
@@ -36,8 +36,15 @@ class metaclassFactory(type):
                 # superclass order assumed as subclass order
                 class_attr['_field_order'] = _base._field_order
             _field_order = class_attr['_field_order']
-
-            class_attr['__slots__'] = ()
+            
+            # update slots to include all superclass attributes
+            if '__slots__' not in class_attr:
+                class_attr['__slots__'] = ()
+            _slots = set(class_attr['__slots__'])
+            for cls in _base.__mro__:
+                if cls != structObject:
+                    _slots.update(getattr(cls,"__slots__",[]))
+            class_attr['__slots__'] = list(_slots)
             
             # default byte order uses native with standard sizes and no alignment
             if '_byte_order' not in class_attr and _base == structObject:
@@ -109,7 +116,8 @@ class structObject(object):
         '_constructors',
         '_segments', # array, holds compiled structs, needed in case there is a substructure, variable array, string, or pascal
         '_byte_order',
-        '_values'
+        '_values',
+        '_bindata'
     )
     _byte_order = None
 
@@ -191,6 +199,9 @@ class structObject(object):
                 return obj
         elif name == 'size':
             return self._size()
+        elif name in self.__slots__:
+            return object.__getattr__(self,name)
+            #return self.__class__.__dict__[name].__get__(self)
         raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
     def __setattr__(self, name, value):
@@ -206,6 +217,9 @@ class structObject(object):
                     self._values[i] = value # probably setting a substructure
                 else:
                     raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
+        elif name in self.__slots__:
+            object.__setattr__(self,name,value)
+            #self.__class__.__dict__[name].__set__(self, value)
         else:
             raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
@@ -293,16 +307,17 @@ class structObject(object):
         for key, value in kargs.iteritems():
             self.__setattr__(key,value)
     
-    def unpack(self, value):
+    def unpack(self, bindata):
+        self._bindata = bindata
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                values = seg.unpack(buffer(value,offset,seg.size))
+                values = seg.unpack(buffer(bindata,offset,seg.size))
                 for i, field in enumerate(self._values[seg.slice]):
                     field.unprep(values[i])
                 offset += seg.size
             elif isinstance(seg, int):
-                self._values[seg].unpack(buffer(value,offset))
+                self._values[seg].unpack(buffer(bindata,offset))
                 offset += self._values[seg].size
     
     def pack(self):

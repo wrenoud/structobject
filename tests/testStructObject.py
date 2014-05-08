@@ -245,7 +245,18 @@ class structObjectTests(unittest.TestCase):
         with self.assertRaises(Exception):
             class Generic(structObject):
                 myfield = None
+
+    def testSlotsWithOverloading(self):
+        class BetterBoundingBox(BoundingBox):
+            __slots__ = ('area',)
+            def __init__(self, *args, **kargs):
+                super(BetterBoundingBox,self).__init__(*args, **kargs)
                 
+                self.area = (self.southeast.x - self.northwest.x) * \
+                            (self.northwest.y - self.southeast.y)
+        bb = BetterBoundingBox(Point(0,10),Point(10,0))
+        self.assertEqual(bb.area, 100)
+        
 if __name__ == '__main__':
     unittest.main()
     
