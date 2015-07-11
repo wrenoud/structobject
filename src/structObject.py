@@ -103,6 +103,24 @@ class structSegment(struct.Struct):
         super(structSegment, self).__init__(fmt)
         self.slice = slice(start, end)
 
+def printItem(item, tab = 0):
+    rep = ""
+    if isinstance(item[1], structArray):
+        if item[1].object_type.__name__ == 'ctype_char':
+            rep = "{}{}: \"{}\"\n".format("\t"*tab, item[0], "".join(c for c in item[1]))
+        else:
+            rep = "{}{}:\n".format("\t"*tab, item[0])
+            for i, subitem in enumerate(item[1]):
+                if isinstance(subitem, structObject):
+                    rep += "{}[{}]\n".format("\t"*(tab+1), i)
+                    for subsubitem in subitem.items():
+                        rep += printItem(subsubitem, tab + 2)
+                else:
+                    rep +="{}[{}] {}\n".format("\t"*(tab+1), i, subitem)
+    else:
+        rep = "{}{}: {}\n".format("\t"*tab, item[0], item[1])
+    return rep
+
 class structObject(object):
     """The base class that scaffolding is used to build out
 
@@ -347,6 +365,12 @@ class structObject(object):
     # def iterkeys(self): pass
     # def itervalues(self): pass
 
+    def __str__(self):
+        rep = ""
+        for item in self.items():
+            rep += printItem(item)
+        return rep
+
 class Empty(structObject):
     """Placeholder for fields intented to be defined in overloaded subclasses"""
     _field_order = []
@@ -384,7 +408,14 @@ class structArray(object):
     
     @property
     def size(self):
-        return self._item_size * self.__len__()
+        if issubclass(self.object_type, structField):
+            return self._item_size * self.__len__()
+        elif issubclass(self.object_type, structObject):
+            size = 0
+            for obj in self._values:
+                size += obj.size
+            return size
+        
         
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -443,8 +474,7 @@ class structArray(object):
                 self.append(value)
         elif issubclass(self.object_type, structObject):
             for i in range(count):
-                offset = i * self._item_size
-                self.append(buffer(bindata,offset, offset + self._item_size))
+                self.append(buffer(bindata,self.size))
             
 
 def struct_array(**kargs):
