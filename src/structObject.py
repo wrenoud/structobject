@@ -104,21 +104,27 @@ class structSegment(struct.Struct):
         self.slice = slice(start, end)
 
 def printItem(item, tab = 0):
-    rep = ""
-    if isinstance(item[1], structArray):
-        if item[1].object_type.__name__ == 'ctype_char':
-            rep = "{}{}: \"{}\"\n".format("\t"*tab, item[0], "".join(c for c in item[1]))
+    key = item[0]
+    val = item[1]
+    rep = "{}{}: ".format("\t"*tab, key)
+    if isinstance(val, structArray):
+        if val.object_type.__name__ == 'ctype_char':
+            rep += "\"{}\"\n".format("".join(val))
         else:
-            rep = "{}{}:\n".format("\t"*tab, item[0])
-            for i, subitem in enumerate(item[1]):
+            rep += "\n"
+            for i, subitem in enumerate(val):
                 if isinstance(subitem, structObject):
                     rep += "{}[{}]\n".format("\t"*(tab+1), i)
                     for subsubitem in subitem.items():
                         rep += printItem(subsubitem, tab + 2)
                 else:
                     rep +="{}[{}] {}\n".format("\t"*(tab+1), i, subitem)
+    elif isinstance(val, structObject):
+        rep += "\n"
+        for subitem in val.items():
+            rep += printItem(subitem, tab + 1)
     else:
-        rep = "{}{}: {}\n".format("\t"*tab, item[0], item[1])
+        rep += "{}\n".format(val)
     return rep
 
 class structObject(object):
