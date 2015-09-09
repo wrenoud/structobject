@@ -64,6 +64,8 @@ class metaclassFactory(type):
             class_attr['_constructors'] = []
             # makes sure attribute in _field_order are defined
             for i,name in enumerate(_field_order):
+                if name in ["size"]:
+                    raise Exception("'{}' is a reserved attribute".format(name))
                 if name not in class_attr:
                     if _base != structObject:
                         # grab from superclass if this is an overloaded subclass
@@ -336,13 +338,13 @@ class structObject(object):
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                values = seg.unpack(buffer(bindata,offset,seg.size))
+                values = seg.unpack(buffer(bindata, offset, seg.size))
                 for i, field in enumerate(self._values[seg.slice]):
                     field.unprep(values[i])
-                offset += seg.size
             elif isinstance(seg, int):
-                self._values[seg].unpack(buffer(bindata,offset))
-                offset += self._values[seg].size
+                seg = self._values[seg]
+                seg.unpack(buffer(bindata,offset))
+            offset += seg.size
     
     def pack(self):
         s = ''
