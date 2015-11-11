@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import struct
 import inspect
 
@@ -346,7 +348,11 @@ class structObject(object):
             if isinstance(seg, structSegment):
                 values = seg.unpack(buffer(bindata, offset, seg.size))
                 for i, field in enumerate(self._values[seg.slice]):
-                    field.unprep(values[i])
+                    try:
+                        field.unprep(values[i])
+                    except Exception as e:
+                        print (self.__class__.__name__)
+                        raise e
             elif isinstance(seg, int):
                 seg = self._values[seg]
                 seg.unpack(buffer(bindata,offset))
