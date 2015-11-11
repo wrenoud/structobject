@@ -126,7 +126,13 @@ def printItem(item, tab = 0):
         for subitem in val.items():
             rep += printItem(subitem, tab + 1)
     else:
-        rep += "{}\n".format(val)
+        try:
+            items = val.items()
+            rep += "\n"
+            for subitem in items:
+                rep += printItem(subitem, tab + 1)
+        except:
+            rep += "{}\n".format(val)
     return rep
 
 class structObject(object):
@@ -374,9 +380,9 @@ class structObject(object):
     # def itervalues(self): pass
 
     def __str__(self):
-        rep = ""
+        rep = "{}:\n".format(self.__class__.__name__)
         for item in self.items():
-            rep += printItem(item)
+            rep += printItem(item, 1)
         return rep
 
 class Empty(structObject):
