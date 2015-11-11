@@ -476,7 +476,10 @@ class structArray(object):
 
     def unpack(self, bindata):
         if self.len != None:
-            count = self.len[0](self._parent)
+            if isinstance(self.len[0], int):
+                count = self.len[0]
+            else:
+                count = self.len[0](self._parent)
         else:
             count = len(bindata) - len(bindata) % self._item_size
         
