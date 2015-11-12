@@ -28,7 +28,6 @@ class structField(object):
     """
     __slots__ = (
     '_parent',
-    '_static', # bool, indicates weith value can be set
     #'fmt',
     'python_type',
     'value',
@@ -38,6 +37,8 @@ class structField(object):
     'validator',
     'doc')
     
+    _static = False # bool, indicates weith value can be set
+
     def __init__(self, _parent, init_value=None):
         self._parent = _parent
 
@@ -54,21 +55,16 @@ class structField(object):
 
         # if the subclass didn't initialize self.value we need to do that
         # before trying to access it
-        try:
-            self.value
-        except:
+
+        if self._static == False:
             self.value = None
-            
-        if self.value == None:
-            self._static = False
             if init_value == None:
                 self.set(self.default)
             else:
                 self.set(init_value)
         elif init_value != None and self.value != init_value:
             raise Exception("Can't store value for static field")
-        else:
-            self._static = True
+
                             
     def get(self, raw=False):
         #if self.generator != None && raw == False:
@@ -78,10 +74,8 @@ class structField(object):
 
 
     def set(self, value):
-        if self._static and self.value != value:
+        if self._static:
             raise AttributeError('Static field is not writeable')
-        elif self.value == value:
-            return
         #elif self.generator != None:
             #raise AttributeError('Generated field is not writeable')
         else:
@@ -142,6 +136,9 @@ def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
 
     # ok, lets add the attributes to the default
     default_attrib.update(user_attrib)
+
+    if 'value' in default_attrib:
+        default_attrib["_static"] = True
 
     # now we just have to touch up a couple attributes
     if 'setter' in default_attrib:

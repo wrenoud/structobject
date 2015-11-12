@@ -2,10 +2,10 @@ import struct
 import inspect
 
 try:
-    from structObject.compatibility import with_metaclass, make_memoryview, string_types
+    from structObject.compatibility import with_metaclass, string_types
     from structObject.structField import structField
 except:
-    from compatibility import with_metaclass, make_memoryview, string_types
+    from compatibility import with_metaclass, string_types
     from structField import structField
 
 native = '='
@@ -346,7 +346,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                values = seg.unpack(make_memoryview(bindata, offset, seg.size))
+                values = seg.unpack(memoryview(bindata)[offset:offset+seg.size])
                 for i, field in enumerate(self._values[seg.slice]):
                     try:
                         field.unprep(values[i])
@@ -355,7 +355,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
                         raise e
             elif isinstance(seg, int):
                 seg = self._values[seg]
-                seg.unpack(make_memoryview(bindata,offset))
+                seg.unpack(memoryview(bindata)[offset:])
             offset += seg.size
 
         #log(self.__class__.__name__, offset, self.size)
@@ -499,7 +499,7 @@ class structArray(object):
                 self.append(value)
         elif issubclass(self.object_type, structObject):
             for i in range(count):
-                self.append(make_memoryview(bindata,self.size))
+                self.append(memoryview(bindata)[self.size:])
             
 
 def struct_array(**kargs):
