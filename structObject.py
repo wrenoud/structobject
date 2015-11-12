@@ -1,9 +1,12 @@
-from __future__ import print_function
-
 import struct
 import inspect
 
-from structField import structField
+try:
+    from structObject.compatibility import with_metaclass, make_memoryview, string_types
+    from structObject.structField import structField
+except:
+    from compatibility import with_metaclass, make_memoryview, string_types
+    from structField import structField
 
 native = '='
 little_endian = '<'
@@ -56,7 +59,7 @@ class metaclassFactory(type):
             _byte_order = class_attr['_byte_order']
                 
             # make sure attributes are included in _field_order
-            for key, val in class_attr.iteritems():
+            for key, val in class_attr.items():
                 # ignore private attributes and class methods (they're functions until we call type())
                 if not key.startswith('_') and \
                     not inspect.isfunction(val) and \
@@ -113,7 +116,7 @@ def printItem(item, tab = 0):
     rep = "{}{}: ".format("\t"*tab, key)
     if isinstance(val, structArray):
         if val.object_type.__name__ == 'ctype_char':
-            rep += "\"{}\"\n".format("".join(val))
+            rep += "\"{}\"\n".format("".join([c.decode("ASCII") for c in val]))
         else:
             rep += "\n"
             for i, subitem in enumerate(val):
@@ -137,7 +140,7 @@ def printItem(item, tab = 0):
             rep += "{}\n".format(val)
     return rep
 
-class structObject(object):
+class structObject(with_metaclass(metaclassFactory,object)):
     """The base class that scaffolding is used to build out
 
     Fields attributes:
@@ -146,16 +149,13 @@ class structObject(object):
     len - can be int or function that returns int, function should only use field previously defined
     """
     __slots__ = (
-        '_field_order', # field order, reqired for any 'first generation' subclass
-        '_constructors',
-        '_segments', # array, holds compiled structs, needed in case there is a substructure, variable array, string, or pascal
-        '_byte_order',
         '_values',
         '_bindata'
     )
+    _field_order = ()
+    _segments = ()
+    _constructors = ()
     _byte_order = None
-
-    __metaclass__ = metaclassFactory
 
     def __init__(self, *args, **kargs):
         """Populate instance based on subclass scaffolding"""
@@ -170,7 +170,7 @@ class structObject(object):
 
         # TODO this is the dumb way to populate, generates defaults first
         _bin = ''
-        if len(args) == 1 and isinstance(args[0], (str, buffer)):
+        if len(args) == 1 and isinstance(args[0], string_types + (memoryview,)):
             _bin = args[0]
             args= []
                 
@@ -233,8 +233,8 @@ class structObject(object):
                 return obj
         elif name == 'size':
             return self._size()
-        elif name in self.__slots__:
-            return object.__getattr__(self,name)
+        else:
+            return self.__getattribute__(name)
             #return self.__class__.__dict__[name].__get__(self)
         raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
@@ -258,7 +258,7 @@ class structObject(object):
             raise AttributeError("Attribute '{}' undefined for structObject".format(name))
             
     def __getitem__(self, key):
-        if isinstance(key, str):
+        if isinstance(key, string_types):
             if '.' in key:
                 _field_names = key.split('.')
                 obj = self.__getattr__(_field_names[0])
@@ -286,7 +286,7 @@ class structObject(object):
         # support substructures
             # i.e. (test) obj.field.subfield1 == obj['field.subfield1']
     def __setitem__(self, key, item):
-        if isinstance(key, str):
+        if isinstance(key, string_types):
             if '.' in key:
                 _field_names = key.split('.')
                 obj = self.__getattr__(_field_names[0])
@@ -338,7 +338,7 @@ class structObject(object):
         elif len(args) > 1:
             raise TypeError('update expected at most 1 arguments, got {}'.format(len(args)))
 
-        for key, value in kargs.iteritems():
+        for key, value in kargs.items():
             self.__setattr__(key,value)
     
     def unpack(self, bindata):
@@ -346,7 +346,7 @@ class structObject(object):
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                values = seg.unpack(buffer(bindata, offset, seg.size))
+                values = seg.unpack(make_memoryview(bindata, offset, seg.size))
                 for i, field in enumerate(self._values[seg.slice]):
                     try:
                         field.unprep(values[i])
@@ -355,11 +355,13 @@ class structObject(object):
                         raise e
             elif isinstance(seg, int):
                 seg = self._values[seg]
-                seg.unpack(buffer(bindata,offset))
+                seg.unpack(make_memoryview(bindata,offset))
             offset += seg.size
+
+        #log(self.__class__.__name__, offset, self.size)
     
     def pack(self):
-        s = ''
+        s = bytes("", "ASCII")
         for seg in self._segments:
             if isinstance(seg, structSegment):
                 prepped_items = []
@@ -372,7 +374,7 @@ class structObject(object):
 
     def _pack(self):
         "Old style packing, goes element by element"
-        s = ''
+        s = bytes("", "ASCII")
         for v in self._values:
             if isinstance(v, structField):
                 s += struct.pack(self._byte_order + v.fmt, v.prep())
@@ -475,7 +477,7 @@ class structArray(object):
         if issubclass(self.object_type, structField):
             return struct.pack(str(self.__len__())+self.object_type.fmt, *self._values)
         elif issubclass(self.object_type, structObject):
-            s = ''
+            s = bytes("", "ASCII")
             for val in self._values:
                 s += val.pack()
             return s
@@ -497,7 +499,7 @@ class structArray(object):
                 self.append(value)
         elif issubclass(self.object_type, structObject):
             for i in range(count):
-                self.append(buffer(bindata,self.size))
+                self.append(make_memoryview(bindata,self.size))
             
 
 def struct_array(**kargs):

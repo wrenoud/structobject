@@ -1,9 +1,15 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import unittest
 import struct
 import sys
 
-sys.path += ['..']
-from src import *
+sys.path.append("..\\..\\")
+
+from structObject import *
 
 class Point(structObject):
     "Basic point class"
@@ -28,7 +34,7 @@ class structArrayTests(unittest.TestCase):
     def testAppend(self):
         p = Path()
         p.points.append(0.0,10.0)
-        self.assertEqual(p.points[0].items(), [('x',0.0),('y',10.0)])
+        self.assertEqual(list(p.points[0].items()), [('x',0.0),('y',10.0)])
     
     def testPack(self):
         p = Path()
@@ -38,8 +44,8 @@ class structArrayTests(unittest.TestCase):
     
     def testUnpack(self):
         p = Path(struct.pack('Idddd',2,0.0,10.0,10.0,20.0))
-        self.assertEqual(p.points[0].items(), [('x',0.0),('y',10.0)])
-        self.assertEqual(p.points[1].items(), [('x',10.0),('y',20.0)])
+        self.assertEqual(list(p.points[0].items()), [('x',0.0),('y',10.0)])
+        self.assertEqual(list(p.points[1].items()), [('x',10.0),('y',20.0)])
         self.assertEqual(p.point_count, 2)
         
     def testObjectTypeStructFieldWOLenIssue6(self):
@@ -47,9 +53,9 @@ class structArrayTests(unittest.TestCase):
             _field_order = ('text',)
             text=struct_array(object_type=ctype_char())
         
-        s = 'Hello World'
-        o = generic_string('Hello World')
-        self.assertEqual(o.text[:], [x for x in s])
+        s = bytes('Hello World',"ASCII")
+        o = generic_string(bytes('Hello World',"ASCII"))
+        self.assertEqual(o.text[:], [chr(x) for x in s])
         
 if __name__ == '__main__':
     unittest.main()

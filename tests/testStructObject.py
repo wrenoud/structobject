@@ -1,11 +1,17 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
 import unittest
 import struct
 import calendar
 import time
 
-sys.path += ['..']
-from src import *
+sys.path.append("..\\..\\")
+
+from structObject import *
 
 class Point(structObject):
     "Basic point class"
@@ -35,30 +41,30 @@ class structObjectTests(unittest.TestCase):
 
     def testInitSetByAttribute(self):
         p = Point()
-        self.assertEqual(p.items(),[('x', 0.0), ('y', 0.0)])
+        self.assertEqual(list(p.items()),[('x', 0.0), ('y', 0.0)])
         p.x = 5000.0
         p.y = 300.5
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitImplicitOrder(self):
         p = Point(5000.0, 300.5)
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitExplicitNames(self):
         p = Point(y=300.5, x=5000.0)
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitMixedOrdering(self):
         p = Point(5000.0, y=300.5)
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitImplicitList(self):
         p = Point((5000.0, 300.5))
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitExplicitDict(self):
         p = Point({'x':5000.0, 'y':300.5})
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testPack(self):
         p = Point(5000.0, 300.5)
@@ -169,24 +175,24 @@ class structObjectTests(unittest.TestCase):
     def testUpdateWithDict(self):
         p = Point()
         p.update({'y':300.5,'x':5000.0})
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testUpdateWithList(self):
         p = Point()
         p.update([('y',300.5),('x',5000.0)])
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testUpdateWithNamed(self):
         p = Point()
         p.update(y=300.5,x=5000.0)
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testUpdateWithBoth(self):
         p = Point()
         p.update({'y':300.5},x=5000.0)
-        self.assertEqual(p.items(),[('x', 5000.0), ('y', 300.5)])
+        self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
         p.update([('y',400.5)],x=6000.0)
-        self.assertEqual(p.items(),[('x', 6000.0), ('y', 400.5)])
+        self.assertEqual(list(p.items()),[('x', 6000.0), ('y', 400.5)])
 
     def testUpdateWithBothOrderPrecidence(self):
         p = Point()
@@ -208,8 +214,8 @@ class structObjectTests(unittest.TestCase):
     def testUnpack(self):
         s = struct.pack('dddd', 0.0, 10.0, 15.0, 0.0)
         bb = BoundingBox(s)
-        self.assertEqual(bb.northwest.items(),[('x', 0.0), ('y', 10.0)])
-        self.assertEqual(bb.southeast.items(),[('x', 15.0), ('y', 0.0)])
+        self.assertEqual(list(bb.northwest.items()),[('x', 0.0), ('y', 10.0)])
+        self.assertEqual(list(bb.southeast.items()),[('x', 15.0), ('y', 0.0)])
         
     def testLen(self):
         bb = BoundingBox()

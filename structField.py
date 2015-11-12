@@ -28,7 +28,6 @@ class structField(object):
     """
     __slots__ = (
     '_parent',
-    '_variable_length', # used for future support of array types, indicates field should not be included in static segment
     '_static', # bool, indicates weith value can be set
     #'fmt',
     'python_type',
@@ -38,14 +37,17 @@ class structField(object):
     'generator',
     'validator',
     'doc')
-    _variable_length = False
-    setter = (lambda x: x,)
-    getter = (lambda x: x,)
-    generator = None
-    validator = []
     
     def __init__(self, _parent, init_value=None):
         self._parent = _parent
+
+        # defaults
+        # self._variable_length = False
+        # self.setter = [lambda x: x,]
+        # self.getter = [lambda x: x,]
+        # self.generator = None
+        # self.validator = []
+
 
         # note that some instances may have generators, but we won't block setting
         # the value until after initialization in case this is a value being read
@@ -83,7 +85,7 @@ class structField(object):
         #elif self.generator != None:
             #raise AttributeError('Generated field is not writeable')
         else:
-            if len(self.validator) > 0:
+            if self.validator is not None:
                 for val in self.validator:
                     if not val(value):
                         raise Exception("Validation error, given value {}".format(value))
@@ -91,21 +93,27 @@ class structField(object):
             self.value = value
 
     def prep(self):
-        if self.generator != None:
+        if self.generator is not None:
             val = self.generator[0](self._parent)
         else:
             val = self.get()
-        _tmp = self.setter[0](val)
+        if self.setter is not None:
+            _tmp = self.setter[0](val)
+        else:
+            _tmp = val
         if not isinstance(_tmp, self.python_type):
             raise Warning("{} is not of type {}, trying coercion".format(self.get(), type(self.python_type())))
             _tmp = self.python_type(_tmp)
         return _tmp
         
     def unprep(self, value):
-        _tmp = self.getter[0](value)
+        if self.getter is not None:
+            _tmp = self.getter[0](value)
+        else:
+            _tmp = value
         if self._static:
             if _tmp != self.get():
-                raise Exception("Value ({}) does not match expected ({})".format(value, self.get()))
+                raise Exception("Value ({}) does not match expected ({}) {}".format(value, self.get(), self.__class__.__name__))
             else: pass # looks good
         else:
             self.set(_tmp)
@@ -128,7 +136,7 @@ def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
     
     Ensures that the attributes (as parameters) passed into the factory are allowed values."""
     allowed = _standard_parameters + special_attrib
-    for key, value in user_attrib.iteritems():
+    for key, value in user_attrib.items():
         if key not in allowed:
             raise Warning("Unsupported attribute '{}'".format(key))
 
@@ -138,11 +146,23 @@ def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
     # now we just have to touch up a couple attributes
     if 'setter' in default_attrib:
         default_attrib['setter'] = (default_attrib['setter'],)
+    else:
+        default_attrib['setter'] = None
     if 'getter' in default_attrib:
         default_attrib['getter'] = (default_attrib['getter'],)
+    else:
+        default_attrib['getter'] = None
     if 'generator' in default_attrib:
         default_attrib['generator'] = (default_attrib['generator'],)
-        
+    else:
+        default_attrib['generator'] = None
+    if 'validator' in default_attrib:
+        default_attrib['validator'] = default_attrib['validator']
+    else:
+        default_attrib['validator'] = None
+
+    default_attrib["_variable_length"] = False
+
 def ctype_pad(**kargs):
     special_parameters = []
     obj_dict = {
