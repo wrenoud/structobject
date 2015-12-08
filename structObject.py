@@ -93,7 +93,7 @@ class metaclassFactory(type):
                 constructor = class_attr['_constructors'][i]
                 if issubclass(constructor, structField) and not constructor._variable_length:
                     fmt += constructor.fmt
-                elif issubclass(constructor, (structObject,structArray)):
+                else: #if issubclass(constructor, (structObject,structArray)):
                     if len(fmt) > 1:
                         class_attr['_segments'].append(structSegment(fmt,start,i))
                         fmt = _byte_order
@@ -180,7 +180,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 constructor = self._constructors[i]
                 if issubclass(constructor, (structField,structArray)):
                     self._values.append(constructor(self))
-                elif issubclass(constructor, structObject):
+                else: #if issubclass(constructor, structObject):
                     self._values.append(constructor())
         else:
             for i,name in enumerate(self._field_order):
@@ -198,7 +198,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 else:
                     if issubclass(constructor, (structField,structArray)):
                         self._values.append(constructor(self))
-                    elif issubclass(constructor, structObject):
+                    else: #if issubclass(constructor, structObject):
                         self._values.append(constructor())
             if len(kargs) > 0:
                 self.update(kargs)
@@ -229,7 +229,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
             obj = self._values[i]
             if issubclass(obj.__class__, structField):
                 return obj.get()
-            elif issubclass(obj.__class__, (structObject, structArray)):
+            else: #if issubclass(obj.__class__, (structObject, structArray)):
                 return obj
         elif name == 'size':
             return self._size()
