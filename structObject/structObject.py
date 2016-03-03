@@ -1,12 +1,12 @@
-import struct
 import inspect
+import struct
 
 try:
     from structObject.compatibility import with_metaclass, string_types
     from structObject.structField import structField
 except:
-    from compatibility import with_metaclass, string_types
-    from structField import structField
+    from structObject.compatibility import with_metaclass, string_types
+    from structObject.structField import structField
 
 native = '='
 little_endian = '<'

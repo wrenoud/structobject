@@ -9,7 +9,7 @@ import struct
 import calendar
 import time
 
-sys.path.append("..\\..\\")
+sys.path.append("..\\")
 
 from structObject import *
 

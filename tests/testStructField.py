@@ -8,7 +8,7 @@ import unittest
 import time
 import calendar
 
-sys.path.append("..\\..\\")
+sys.path.append("..\\")
 
 from structObject import *
 
