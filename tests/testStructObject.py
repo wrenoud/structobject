@@ -11,22 +11,22 @@ import time
 
 sys.path.append("..\\")
 
-from binary_serializer import *
+from structobject import *
 
-class Point(binary_serializer):
+class Point(structobject):
     "Basic point class"
     _field_order = ('x','y')
     x = ctype_double()
     y = ctype_double()
 
-class Point3D(binary_serializer):
+class Point3D(structobject):
     "Basic point class"
     _field_order = ('x','y','z')
     x = ctype_double()
     y = ctype_double()
     z = ctype_double()
     
-class BoundingBox(binary_serializer):
+class BoundingBox(structobject):
     _field_order = ('northwest','southeast')
     northwest = Point
     southeast = Point
@@ -36,7 +36,7 @@ class structObjectTests(unittest.TestCase):
     # if length is specified it should be an array or 's'
     def testOrder(self):
         # exception should be raised if '_order' not defined in subclass
-        # exception should be raise if '_order' defined in subclass that isn't first decendant of binary_serializer
+        # exception should be raise if '_order' defined in subclass that isn't first decendant of structobject
         pass
 
     def testInitSetByAttribute(self):
@@ -79,7 +79,7 @@ class structObjectTests(unittest.TestCase):
             setter=calendar.timegm,
             getter=time.gmtime
         )
-        class Generic(binary_serializer):
+        class Generic(structobject):
             _field_order = ('timestamp',)
             timestamp = field
         
@@ -91,7 +91,7 @@ class structObjectTests(unittest.TestCase):
             setter=calendar.timegm,
             getter=time.gmtime
         )
-        class Generic(binary_serializer):
+        class Generic(structobject):
             _field_order = ('timestamp',)
             timestamp = field
             
@@ -145,7 +145,7 @@ class structObjectTests(unittest.TestCase):
         self.assertRaises(Exception, p.__setitem__, int)
 
     def testOverloading(self):
-        class GenericBoundingBox(binary_serializer):
+        class GenericBoundingBox(structobject):
             _field_order = ('northwest','southeast')
             northwest = None
             southeast = None
@@ -158,7 +158,7 @@ class structObjectTests(unittest.TestCase):
         self.assertEqual(bb.northwest.z, 30.0)
 
     def testOverloadingNotImplemented(self):
-        class GenericBoundingBox(binary_serializer):
+        class GenericBoundingBox(structobject):
             _field_order = ('northwest','southeast')
             northwest = None
             southeast = None
@@ -225,7 +225,7 @@ class structObjectTests(unittest.TestCase):
         
     def testOverloadingFixesIssue1(self):
         # covers fix #1
-        class GenericDatagram(binary_serializer):
+        class GenericDatagram(structobject):
             _field_order = ('STX','timestamp','body','ETX')
             STX = ctype_uchar(value=0x02)
             timestamp = ctype_uint()
@@ -239,7 +239,7 @@ class structObjectTests(unittest.TestCase):
         self.assertEqual(bbgram.timestamp, 100)
         
     def testOverloadingWithFieldOrderRaisesException(self):
-        class Generic(binary_serializer):
+        class Generic(structobject):
             _field_order = ('myfield',)
             myfield = None
         with self.assertRaises(Exception):
@@ -249,7 +249,7 @@ class structObjectTests(unittest.TestCase):
 
     def testNoFieldOrderRaisesException(self):
         with self.assertRaises(Exception):
-            class Generic(binary_serializer):
+            class Generic(structobject):
                 myfield = None
 
     def testSlotsWithOverloading(self):

@@ -9,15 +9,15 @@ import sys
 
 sys.path.append("..\\")
 
-from binary_serializer import *
+from structobject import *
 
-class Point(binary_serializer):
+class Point(structobject):
     "Basic point class"
     _field_order = ('x','y')
     x = ctype_double()
     y = ctype_double()
 
-class Path(binary_serializer):
+class Path(structobject):
     _field_order = ('point_count','points')
     # the number of points in the path
     point_count = ctype_uint(
@@ -49,7 +49,7 @@ class structArrayTests(unittest.TestCase):
         self.assertEqual(p.point_count, 2)
         
     def testObjectTypeStructFieldWOLenIssue6(self):
-        class generic_string(binary_serializer):
+        class generic_string(structobject):
             _field_order = ('text',)
             text=struct_array(object_type=ctype_char())
         
