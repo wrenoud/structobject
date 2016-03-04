@@ -10,7 +10,7 @@ import calendar
 
 sys.path.append("..\\")
 
-from structObject import *
+from binary_serializer import *
 
 class structFieldTests(unittest.TestCase):
     def testFactories(self):

@@ -15,7 +15,7 @@ myfieldclass()
 class structField(object):
     """
 
-    Note: structObject's metaclass will make sure this is a deep copy and set the _parent
+    Note: binary_serializer's metaclass will make sure this is a deep copy and set the _parent
 
     Parameters:
     fmt - struct format character

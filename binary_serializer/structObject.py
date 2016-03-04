@@ -2,11 +2,11 @@ import inspect
 import struct
 
 try:
-    from structObject.compatibility import with_metaclass, string_types
-    from structObject.structField import structField
+    from .compatibility import with_metaclass, string_types
+    from .structField import structField
 except:
-    from structObject.compatibility import with_metaclass, string_types
-    from structObject.structField import structField
+    from .compatibility import with_metaclass, string_types
+    from .structField import structField
 
 native = '='
 little_endian = '<'
@@ -14,7 +14,7 @@ big_endian = '>'
 network = '!'
 
 class metaclassFactory(type):
-    """Builds the subclasses of structObject"""
+    """Builds the subclasses of binary_serializer"""
 
     def __new__(metaclass, class_name, class_bases, class_attr):
         """Implements subclass scaffolding onto base and returns built class
@@ -34,9 +34,9 @@ class metaclassFactory(type):
 
             # make sure _field_order is defined, and only once per superclass
             if '_field_order' in class_attr and _base != structObject:
-                raise Exception("Only subclasses of structObject may define '_field_order' attribute")
+                raise Exception("Only subclasses of binary_serializer may define '_field_order' attribute")
             elif '_field_order' not in class_attr and _base == structObject:
-                raise Exception("Subclasses that extend structObject must define class attribute '_field_order'")
+                raise Exception("Subclasses that extend binary_serializer must define class attribute '_field_order'")
             elif '_field_order' not in class_attr:
                 # superclass order assumed as subclass order
                 class_attr['_field_order'] = _base._field_order
@@ -93,7 +93,7 @@ class metaclassFactory(type):
                 constructor = class_attr['_constructors'][i]
                 if issubclass(constructor, structField) and not constructor._variable_length:
                     fmt += constructor.fmt
-                else: #if issubclass(constructor, (structObject,structArray)):
+                else: #if issubclass(constructor, (binary_serializer,structArray)):
                     if len(fmt) > 1:
                         class_attr['_segments'].append(structSegment(fmt,start,i))
                         fmt = _byte_order
@@ -180,7 +180,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 constructor = self._constructors[i]
                 if issubclass(constructor, (structField,structArray)):
                     self._values.append(constructor(self))
-                else: #if issubclass(constructor, structObject):
+                else: #if issubclass(constructor, binary_serializer):
                     self._values.append(constructor())
         else:
             for i,name in enumerate(self._field_order):
@@ -198,7 +198,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 else:
                     if issubclass(constructor, (structField,structArray)):
                         self._values.append(constructor(self))
-                    else: #if issubclass(constructor, structObject):
+                    else: #if issubclass(constructor, binary_serializer):
                         self._values.append(constructor())
             if len(kargs) > 0:
                 self.update(kargs)
@@ -229,14 +229,14 @@ class structObject(with_metaclass(metaclassFactory,object)):
             obj = self._values[i]
             if issubclass(obj.__class__, structField):
                 return obj.get()
-            else: #if issubclass(obj.__class__, (structObject, structArray)):
+            else: #if issubclass(obj.__class__, (binary_serializer, structArray)):
                 return obj
         elif name == 'size':
             return self._size()
         else:
             return self.__getattribute__(name)
             #return self.__class__.__dict__[name].__get__(self)
-        raise AttributeError("Attribute '{}' undefined for structObject".format(name))
+        raise AttributeError("Attribute '{}' undefined for binary_serializer".format(name))
             
     def __setattr__(self, name, value):
         if name.startswith('_'):
@@ -255,7 +255,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
             object.__setattr__(self,name,value)
             #self.__class__.__dict__[name].__set__(self, value)
         else:
-            raise AttributeError("Attribute '{}' undefined for structObject".format(name))
+            raise AttributeError("Attribute '{}' undefined for binary_serializer".format(name))
             
     def __getitem__(self, key):
         if isinstance(key, string_types):

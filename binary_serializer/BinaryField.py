@@ -111,9 +111,11 @@ class BinaryFieldBase(BinaryBase):
 
     def __set__(self, parent, value):
         if value is None:
-            value = self._default
-        self.validate(value)
-        parent._values[id(self)] = value
+            parent._values[id(self)] = self._default
+        else:
+            if self._validators is not None:
+                self.validate(value)
+            parent._values[id(self)] = value
 
     def validate(self, value):
         if self._validators is not None:
@@ -139,13 +141,11 @@ class BinaryFieldBase(BinaryBase):
         Args:
             parent: the parent object so the descriptor can look up and set value
         """
-        _tmp = self.__get__(parent)
         if self._getters is not None:
+            _tmp = self.__get__(parent)
             for getter in self._getters:
                 _tmp = getter(_tmp)
-
-        self.validate(_tmp)
-        self.__set__(parent, _tmp)
+            self.__set__(parent, _tmp)
 
     @property
     def size(self):
@@ -158,12 +158,12 @@ def field_list(parent_field, name, parent ='self'):
 
     address = '{}.{}'.format(parent, name)
 
-    for field_name in parent_field.keys():
-        field = parent_field.field_instance(field_name)
+    for field_name in parent_field._field_order:
+        field = parent_field.__class__.__dict__[field_name]
 
         if issubclass(field.__class__, BinaryFieldBase):
             unpack_field_list += "{0}.{1}, ".format(address, field_name)
-            pack_field_list += "{0}.field_instance('{1}').prep({0}), ".format(address, field_name)
+            pack_field_list += "{0}.__class__.__dict__['{1}'].prep({0}), ".format(address, field_name)
 
         if issubclass(field.__class__, BinaryObjectBase):
             _unpack, _pack = field_list(field, field_name, address)
@@ -227,7 +227,7 @@ class BinaryObjectMeta(type):
             if not class_attr['_partial_class']:
                 # create unpack function
                 class_attr['_structs'] = []
-                unpack_func = 'def _unpack_from(self, data, offset = 0):\n\ttotal_sz = 0\n'
+                unpack_func = 'def _unpack_from(self, data, offset = 0):\n'
                 pack_func = 'def _pack(self):\n\tdata = b\'\'\n'
 
                 partial_struct = class_attr['_byte_order']
@@ -242,7 +242,7 @@ class BinaryObjectMeta(type):
                     elif issubclass(field.__class__, BinaryFieldBase):
                         partial_struct += field._format
                         unpack_field_list += "self.{}, ".format(key)
-                        pack_field_list += "self.field_instance('{}').prep(self), ".format(key)
+                        pack_field_list += "self.__class__.__dict__['{}'].prep(self), ".format(key)
                     elif issubclass(field.__class__, BinaryObjectBase) and field.flat() and field._byte_order == class_attr['_byte_order']:
                         # build up list of child fields
                         _unpack, _pack  = field_list(field, key)
@@ -258,7 +258,6 @@ class BinaryObjectMeta(type):
                             unpack_func += '\n\tsz = self._structs[{0}].size\n'.format(struct_idx)
                             unpack_func += '\t' + unpack_field_list + ' = self._structs[{0}].unpack_from(data, offset)\n'.format(struct_idx)
                             unpack_func += '\toffset += sz\n'
-                            unpack_func += '\ttotal_sz += sz\n'
 
                             pack_func += '\n\tdata += self._structs[{}].pack({})\n'.format(struct_idx, pack_field_list[:-2])
 
@@ -269,7 +268,6 @@ class BinaryObjectMeta(type):
                         # ask the child to unpack itself
                         unpack_func += '\n\tself.{}._unpack_from(data, offset)\n'.format(key)
                         unpack_func += '\toffset += self.{}.size\n'.format(key)
-                        unpack_func += '\ttotal_sz += self.{}.size\n'.format(key)
 
                         # ask the child to pack itself
                         pack_func += '\n\tdata += self.{}._pack()\n'.format(key)
@@ -283,14 +281,12 @@ class BinaryObjectMeta(type):
                     struct_idx = len(class_attr['_structs'])
                     class_attr['_structs'].append(struct.Struct(partial_struct))
 
-                    unpack_func += '\n\tsz = self._structs[{0}].size\n'.format(struct_idx)
                     unpack_func += '\t' + unpack_field_list + ' = self._structs[{0}].unpack_from(data, offset)\n'.format(struct_idx)
-                    unpack_func += '\toffset += sz\n'
-                    unpack_func += '\ttotal_sz += sz\n'
+                    #unpack_func += '\toffset += sz\n'
+
 
                     pack_func += '\n\tdata += self._structs[{}].pack({})\n'.format(struct_idx, pack_field_list[:-2])
 
-                unpack_func += '\treturn total_sz\n'
                 pack_func += '\treturn data\n'
     
                 class_attr['unpack_func_string'] = unpack_func
@@ -309,20 +305,20 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
     _field_order = ()
 
     def AddSetter(self, func, field_name):
-        if field_name in self.keys():
-            self.field_instance(field_name).AddSetter(func)
+        if field_name in self._field_order:
+            self.__class__.__dict__[field_name].AddSetter(func)
         else:
             raise AttributeError("{} is not an attribute of {}".format(field_name, self.__class__.__name__))
 
     def AddGetter(self, func, field_name):
-        if field_name in self.keys():
-            self.field_instance(field_name).AddSetter(func)
+        if field_name in self._field_order:
+            self.__class__.__dict__[field_name].AddSetter(func)
         else:
             raise AttributeError("{} is not an attribute of {}".format(field_name, self.__class__.__name__))
 
     def AddValidator(self, func, field_name):
-        if field_name in self.keys():
-            self.field_instance(field_name).AddSetter(func)
+        if field_name in self._field_order:
+            self.__class__.__dict__[field_name].AddSetter(func)
         else:
             raise AttributeError("{} is not an attribute of {}".format(field_name, self.__class__.__name__))
 
@@ -348,16 +344,11 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
         # check for binary data
         if len(args) == 1 and isinstance(args[0], string_types + (memoryview,)):
             self.unpack(args[0])
-        elif len(args) == 0 and len(kargs) == 0:
-            for field_name in self.keys():
-                self.__setattr__(field_name, None)  # initialize all items to None
-        else:
-            for i, field_name in enumerate(self.keys()):
+        elif len(args) > 0 or len(kargs) > 0:
+            for i, field_name in enumerate(self._field_order):
                 # assign order parameter and defaults for remainder
                 if i < len(args):
                     self.__setattr__(field_name, args[i])
-                else:
-                    self.__setattr__(field_name, None)
             if len(kargs) > 0:
                 self.update(kargs)
 
@@ -367,24 +358,21 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
             # retrieve values from parent, for now we'll masquerade as this parent's child
             if id(self) not in parent._values:
                 # hasn't been initialized in parent, set all values to none
-                self.__set__(parent, None)
+                # self.__set__(parent, None)
+                parent._values[id(self)] = {}
             self._values = parent._values[id(self)]
         return self
 
     def __set__(self, parent, value):
         # create empty dict in parent
-        if value is None:
-            self._values = parent._values[id(self)] = {}
-            for field_name in self.keys():
-                self.__setattr__(field_name, None)  # initialize all items to None
-        elif issubclass(value.__class__, self.__class__):
+        if issubclass(value.__class__, self.__class__):
             # copy pointer to outside values
             parent._values[id(self)] = value._values
         else:
             # find my name to tell user
             name = ''
-            for key in parent.keys():
-                if id(parent.field_instance(key)) == id(self):
+            for key in parent._field_order:
+                if id(parent.__class__.__dict__[key]) == id(self):
                     name = key
                     break
             raise TypeError("'{}' must be of type '{}', given '{}'".format(name, self.__class__.__name__, value.__class__.__name__))
@@ -429,7 +417,7 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
         elif isinstance(key, slice):
             result = []
             for field_name in self._field_order[key]:
-                field = self.field_instance(field_name)
+                field = self.__class__.__dict__[field_name]
                 if issubclass(field.__class__, BinaryFieldBase):
                     result.append(field.__get__(self, self.__class__))
                 elif issubclass(field.__class__, BinaryObjectBase):
@@ -447,8 +435,8 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
         if self.flat():
             sz = self._structs[0].size
         else:
-            for key in self.keys():
-                sz += self.field_instance(key).size()
+            for key in self._field_order:
+                sz += self.__class__.__dict__[key].size()
         return sz
 
     def keys(self):
@@ -456,12 +444,12 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
 
     def values(self):
         values = []
-        for key in self.keys():
+        for key in self._field_order:
             values.append(self.__getattribute__(key))
         return values
 
     def items(self):
-        return zip(self.keys(), self.values())
+        return zip(self._field_order, self.values())
 
     def unpack(self, bindata, alt=False):
         self._unpack_from(memoryview(bindata))
@@ -478,9 +466,9 @@ class BinaryObjectBase(with_metaclass(BinaryObjectMeta, BinaryBase)):
         return self.__class__.__dict__[field_name]
 
     def unprep(self):
-        for field_name in self.keys():
-            field = self.field_instance(field_name)
-            if issubclass(field.__class__, BinaryFieldBase):
+        for field_name in self._field_order:
+            field = self.__class__.__dict__[field_name]
+            if issubclass(field.__class__, BinaryFieldBase) and field._getters is not None:
                 field.unprep(self)
             elif issubclass(field.__class__, BinaryObjectBase):
                 field.unprep()
