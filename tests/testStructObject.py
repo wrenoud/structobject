@@ -13,35 +13,27 @@ sys.path.append("..\\")
 
 from structobject import *
 
-class Point(structobject):
+class Point(StructObjectBase):
     "Basic point class"
-    _field_order = ('x','y')
-    x = ctype_double()
-    y = ctype_double()
+    x = FieldType.double()
+    y = FieldType.double()
 
-class Point3D(structobject):
+class Point3D(StructObjectBase):
     "Basic point class"
-    _field_order = ('x','y','z')
-    x = ctype_double()
-    y = ctype_double()
-    z = ctype_double()
-    
-class BoundingBox(structobject):
-    _field_order = ('northwest','southeast')
-    northwest = Point
-    southeast = Point
+    x = FieldType.double()
+    y = FieldType.double()
+    z = FieldType.double()
+
+class BoundingBox(StructObjectBase):
+    northwest = Point()
+    southeast = Point()
 
 
-class structObjectTests(unittest.TestCase):
-    # if length is specified it should be an array or 's'
-    def testOrder(self):
-        # exception should be raised if '_order' not defined in subclass
-        # exception should be raise if '_order' defined in subclass that isn't first decendant of structobject
-        pass
+class StructObjectBaseTests(unittest.TestCase):
 
     def testInitSetByAttribute(self):
         p = Point()
-        self.assertEqual(list(p.items()),[('x', 0.0), ('y', 0.0)])
+        self.assertEqual(list(p.items()),[('x', None), ('y', None)])
         p.x = 5000.0
         p.y = 300.5
         self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
@@ -63,7 +55,7 @@ class structObjectTests(unittest.TestCase):
         self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testInitExplicitDict(self):
-        p = Point({'x':5000.0, 'y':300.5})
+        p = Point({'x': 5000.0, 'y': 300.5})
         self.assertEqual(list(p.items()),[('x', 5000.0), ('y', 300.5)])
 
     def testPack(self):
@@ -72,32 +64,28 @@ class structObjectTests(unittest.TestCase):
 
     def testPackWithSubstructure(self):
         bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
-        self.assertEqual(bb.pack(), struct.pack('dddd', 0.0, 10.0, 15.0, 0.0))
+        self.assertEqual(bb.pack(), struct.pack(b'dddd', 0.0, 10.0, 15.0, 0.0))
 
     def testPackWithSetter(self):
-        field = ctype_uint(
-            setter=calendar.timegm,
-            getter=time.gmtime
-        )
-        class Generic(structobject):
-            _field_order = ('timestamp',)
-            timestamp = field
-        
+        class Generic(StructObjectBase):
+            timestamp = FieldType.uint(
+                setter=calendar.timegm,
+                getter=time.gmtime
+            )
+
         t = Generic(timestamp=time.gmtime(100))
         self.assertEqual(t.pack(), struct.pack('I', 100))
-    
+
     def testUnpackWithGetter(self):
-        field = ctype_uint(
-            setter=calendar.timegm,
-            getter=time.gmtime
-        )
-        class Generic(structobject):
-            _field_order = ('timestamp',)
-            timestamp = field
-            
+        class Generic(StructObjectBase):
+            timestamp = FieldType.uint(
+                setter=calendar.timegm,
+                getter=time.gmtime
+            )
+
         t = Generic(struct.pack('I', 100))
         self.assertEqual(t.timestamp, time.gmtime(100))
-        
+
     def testGetItemWithString(self):
         bb = BoundingBox(Point(0.0, 10.0), southeast=Point(15.0, 0.0))
         self.assertEqual(bb['northwest.y'], 10.0)
@@ -107,7 +95,7 @@ class structObjectTests(unittest.TestCase):
         p = Point(5000.0, 300.5)
         self.assertEqual(p[1], 300.5)
         self.assertRaises(IndexError, p.__getitem__, 3)
-        
+
     def testGetItemWithSlice(self):
         p = Point(5000.0, 300.5)
         self.assertEqual(p[:], [5000.0, 300.5])
@@ -117,7 +105,7 @@ class structObjectTests(unittest.TestCase):
     def testGetItemWithObj(self):
         p = Point(5000.0, 300.5)
         self.assertRaises(Exception, p.__getitem__, int)
-        
+
     def testSetItemWithString(self):
         bb = BoundingBox()
         bb['northwest.y'] = 15.0
@@ -145,25 +133,23 @@ class structObjectTests(unittest.TestCase):
         self.assertRaises(Exception, p.__setitem__, int)
 
     def testOverloading(self):
-        class GenericBoundingBox(structobject):
-            _field_order = ('northwest','southeast')
-            northwest = None
-            southeast = None
-            
+        class GenericBoundingBox(StructObjectBase):
+            northwest = FieldType.none()
+            southeast = FieldType.none()
+
         class BoundingBox3D(GenericBoundingBox):
-            northwest = Point3D
-            southeast = Point3D
-            
+            northwest = Point3D()
+            southeast = Point3D()
+
         bb = BoundingBox3D(Point3D(10.0,20.0,30.0))
         self.assertEqual(bb.northwest.z, 30.0)
 
     def testOverloadingNotImplemented(self):
-        class GenericBoundingBox(structobject):
-            _field_order = ('northwest','southeast')
-            northwest = None
-            southeast = None
+        class GenericBoundingBox(StructObjectBase):
+            northwest = FieldType.none()
+            southeast = FieldType.none()
         self.assertRaises(NotImplementedError,GenericBoundingBox)
-        
+
     def testInitWithWrongObjectTypeForField(self):
         self.assertRaises(TypeError, BoundingBox, Point3D())
 
@@ -205,59 +191,51 @@ class structObjectTests(unittest.TestCase):
 
     def testUpdateWithTooManyParameters(self):
         p = Point()
-        self.assertRaisesRegexp(TypeError, "update expected at most 1 arguments, got 2", p.update, 5000.0, 6000.0)
-        
+        self.assertRaisesRegex(TypeError, "update expected at most 1 arguments, got 2", p.update, 5000.0, 6000.0)
+
     def testSize(self):
         bb = BoundingBox()
         self.assertEqual(bb.size,32)
-        
+
     def testUnpack(self):
         s = struct.pack('dddd', 0.0, 10.0, 15.0, 0.0)
         bb = BoundingBox(s)
         self.assertEqual(list(bb.northwest.items()),[('x', 0.0), ('y', 10.0)])
         self.assertEqual(list(bb.southeast.items()),[('x', 15.0), ('y', 0.0)])
-        
+
     def testLen(self):
         bb = BoundingBox()
         p = Point3D()
         self.assertEqual(len(bb),2)
         self.assertEqual(len(p),3)
-        
+
     def testOverloadingFixesIssue1(self):
         # covers fix #1
-        class GenericDatagram(structobject):
-            _field_order = ('STX','timestamp','body','ETX')
-            STX = ctype_uchar(value=0x02)
-            timestamp = ctype_uint()
-            body = None
-            ETX = ctype_uchar(value=0x03)
-            
+        class GenericDatagram(StructObjectBase):
+            STX = FieldType.uchar(value=0x02)
+            timestamp = FieldType.uint()
+            body = FieldType.none()
+            ETX = FieldType.uchar(value=0x03)
+
         class BoundingBoxDatagram(GenericDatagram):
-            body = BoundingBox
-                
+            body = BoundingBox()
+
         bbgram = BoundingBoxDatagram(timestamp=100)
         self.assertEqual(bbgram.timestamp, 100)
-        
-    def testOverloadingWithFieldOrderRaisesException(self):
-        class Generic(structobject):
-            _field_order = ('myfield',)
-            myfield = None
+
+    def testOverloadingWithNewFieldRaisesException(self):
+        class Generic(StructObjectBase):
+            myfield = FieldType.none()
         with self.assertRaises(Exception):
             class Overload(Generic):
-                _field_order = ('myfield',)
-                myfield = Point
-
-    def testNoFieldOrderRaisesException(self):
-        with self.assertRaises(Exception):
-            class Generic(structobject):
-                myfield = None
+                newfield = Point()
 
     def testSlotsWithOverloading(self):
         class BetterBoundingBox(BoundingBox):
             __slots__ = ('area',)
             def __init__(self, *args, **kargs):
                 super(BetterBoundingBox,self).__init__(*args, **kargs)
-                
+
                 self.area = (self.southeast.x - self.northwest.x) * \
                             (self.northwest.y - self.southeast.y)
         bb = BetterBoundingBox(Point(0,10),Point(10,0))

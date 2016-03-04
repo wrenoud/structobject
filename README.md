@@ -1,4 +1,4 @@
-structObject
+StructObjectBase
 ============
 
 A verbose pythonic semantic for describing binary data structures and associated python objects.
@@ -6,17 +6,16 @@ A verbose pythonic semantic for describing binary data structures and associated
 Basic Usage
 -----------
 
-For this first example we're going to define a simple 2D point with the attributes `x` and `y`representing binary doubles.
+For this first example we're going to define a simple 2D point with the attributes `x` and `y` representing binary doubles.
 
 ```Python
-class Point(structObject):
+class Point(StructObjectBase):
     "Basic point class"
-    _field_order = ('x','y')
-    x = ctype_double()
-    y = ctype_double()
+    x = FieldType.double()
+    y = FieldType.double()
 ```
 
-Object instances of the `Point` class, which extends the `structObject`, can be initialized in several different ways. First, omitting any parameters the instance will be populated with default values (here we haven't specified defaults so 0.0 is assumed). The attributes can be assigned values after initialization.
+Object instances of the `Point` class, which extends the `StructObjectBase`, can be initialized in several different ways. First, omitting any parameters the instance will be populated with default values (here we haven't specified defaults so 0.0 is assumed). The attributes can be assigned values after initialization.
 
 ```Python
 >>> p = Point() # create default instance
@@ -27,7 +26,9 @@ Object instances of the `Point` class, which extends the `structObject`, can be 
 >>> print p.items()
 [('x',5000.0), ('y', 300.5)]
 ```
+
 Alternately, the object can be initialized with our values. The parameter order should match the order specified in the class attribute `_field_order`.
+
 ```Python
 >>> p = Point(5000.0, 300.5)
 >>> print p.items()
@@ -71,10 +72,9 @@ Using Substructures
 We're going to reuse the `Point` class to describe a rectangular bounding box with two attributes, the northwest and southeast corners.
 
 ```Python
-class BoundingBox(structObject):
-    _field_order = ('northwest','southeast')
-    northwest = Point
-    southeast = Point
+class BoundingBox(StructObjectBase):
+    northwest = Point()
+    southeast = Point()
 ```
 
 Seriously, it's that easy. Let's initialize one of these.
@@ -98,24 +98,23 @@ Let's try that again but with some points
 Overloading
 -----------
 
-Subclasses of structObject can be extended and overloaded. This can be especially handy if you have a standard structure that you don't want to redefine.
+Subclasses of StructObjectBase can be extended and overloaded. This can be especially handy if you have a standard structure that you don't want to redefine.
 
 Here we're going to make a simple datagram structure with a start and end flag, a timestamp and some arbitrary body that we'll overload in a second.
 
 ```Python
-class GenericDatagram(structObject):
-    _field_order = ('STX','timestamp','body','ETX')
-    STX = ctype_uchar(value=0x02)
-    timestamp = ctype_uint()
-    body = None
-    ETX = ctype_uchar(value=0x03)
+class GenericDatagram(StructObjectBase):
+    STX = FieldType.uchar(value=0x02)
+    timestamp = FieldType.uint()
+    body = FieldType.none()
+    ETX = FieldType.uchar(value=0x03)
 ```
 
 Now that we have generic datagram lets make it a wrapper on the BoundingBox structure we defined earlier as an extension of the GenericDatagram structure.
 
 ```Python
 class BoundingBoxDatagram(GenericDatagram):
-    body = BoundingBox
+    body = BoundingBox()
 ```
 
 That's it. Lets create one of this. We'll set the timestamp and get the binary.
@@ -134,19 +133,18 @@ Arrays of Substructures
 Now we're going to reuse the point structure to describe a path as a series of points with a description.
 
 ```Python
-class Path(structObject):
-    _field_order = ('description','point_count','points')
+class Path(StructObjectBase):
     # a nice description of the path
-    description = ctype_string(
+    description = FieldType.string(
         len = 25
     )
     # the number of points in the path
-    point_count = ctype_uint(
+    point_count = FieldType.uint(
         generator = lambda self: len(self.points)
     )
     # the points
     points = structArray(
-        object_type = Point,
+        object_type = Point(),
         len = lambda self: self.point_count
     )
 ```
@@ -161,12 +159,11 @@ Explicit Byte Order
 Up to now we've omitted specifying the byte order. As with python's builtin module `struct`, the systems native byte order will be assumed unless otherwise specified. Lets take the `Point` class and add in the byte order explicitely.
 
 ```Python
-class Point(structObject):
+class Point(StructObjectBase):
     "Basic point class"
-    _field_order = ('x','y')
     _byte_order = little_endian
-    x = ctype_double()
-    y = ctype_double()
+    x = FieldType.double()
+    y = FieldType.double()
 ```
 
 Custom Computed Attributes

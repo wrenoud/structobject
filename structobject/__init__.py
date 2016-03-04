@@ -3,8 +3,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from structobject.structObject import *
-from structobject.structField import *
+import structobject.StructField as FieldType
+from structobject.StructObject import StructObjectBase
 from structobject.compatibility import *
-
-import structobject.BinaryField
