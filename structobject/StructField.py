@@ -25,12 +25,12 @@ class StructFieldBase(StructBase):
         self._validators.append(func)
 
     def __init__(self, default=None, getter=None, setter=None, value=None):
-        super(StructFieldBase, self).__init__()
         self._structs = [struct.Struct(self.format)]
         self._default = None
         self._setters = None
         self._getters = None
         self._validators = None
+        self._name = None
 
         if default is not None: self._default = default
         if getter is not None: self.AddGetter(getter)
@@ -49,16 +49,23 @@ class StructFieldBase(StructBase):
     def __get__(self, parent, parent_type=None):
         if parent is None:
             return self
-        elif id(self) in parent._values:
-            return parent._values[id(self)]
+        elif self._name in parent._values:
+            _tmp = parent._values[self._name]
+            if self._getters is not None:
+                for getter in self._getters:
+                    _tmp = getter(_tmp)
+            return _tmp
 
     def __set__(self, parent, value):
         if value is None:
-            parent._values[id(self)] = self._default
+            parent._values[self._name] = self._default
         else:
+            if self._setters is not None:
+                for setter in self._setters:
+                    value = setter(value)
             if self._validators is not None:
                 self.validate(value)
-            parent._values[id(self)] = value
+            parent._values[self._name] = value
 
     def validate(self, value):
         if self._validators is not None:
@@ -73,9 +80,9 @@ class StructFieldBase(StructBase):
             parent: the parent object so the descriptor can look up the value
         """
         _tmp = self.__get__(parent)
-        if self._setters is not None:
-            for setter in self._setters:
-                _tmp = setter(_tmp)
+        # if self._setters is not None:
+        #     for setter in self._setters:
+        #         _tmp = setter(_tmp)
         return _tmp
 
     def unprep(self, parent):
@@ -84,11 +91,12 @@ class StructFieldBase(StructBase):
         Args:
             parent: the parent object so the descriptor can look up and set value
         """
-        if self._getters is not None:
-            _tmp = self.__get__(parent)
-            for getter in self._getters:
-                _tmp = getter(_tmp)
-            self.__set__(parent, _tmp)
+        # if self._getters is not None:
+        #     _tmp = self.__get__(parent)
+        #     for getter in self._getters:
+        #         _tmp = getter(_tmp)
+        #     self.__set__(parent, _tmp)
+        pass
 
     @property
     def size(self):

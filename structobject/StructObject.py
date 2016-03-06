@@ -15,21 +15,21 @@ big_endian = b'>'
 network = b'!'
 
 
-def field_list(parent_field, name, parent ='self'):
+def field_list(parent_field, name, parents=[]):
     unpack_field_list = ''
     pack_field_list = ''
 
-    address = '{}.{}'.format(parent, name)
+    local_parents = parents + [name]
 
     for field_name in parent_field._field_order:
         field = parent_field.__class__.__dict__[field_name]
 
         if issubclass(field.__class__, StructFieldBase):
-            unpack_field_list += "{0}.{1}, ".format(address, field_name)
-            pack_field_list += "{0}.__class__.__dict__['{1}'].prep({0}), ".format(address, field_name)
+            unpack_field_list += "self._values['{}']['{}'], ".format("']['".join(parent for parent in local_parents),field_name)
+            pack_field_list += "self._values['{}']['{}'], ".format("']['".join(parent for parent in local_parents),field_name)
 
         if issubclass(field.__class__, StructObjectBase):
-            _unpack, _pack = field_list(field, field_name, address)
+            _unpack, _pack = field_list(field, field_name, local_parents)
 
             unpack_field_list += _unpack
             pack_field_list += _pack
@@ -64,6 +64,11 @@ class StructObjectMeta(type):
                 # grab names
                 class_attr['_field_order'] = [item[0] for item in fields]
 
+            # set names for child class fields
+            for key, val in class_attr.items():
+                if issubclass(class_attr[key].__class__, StructBase):
+                    class_attr[key]._name = key
+
             # migrate any superclass fields into subclass
             if not is_subclass_of_base:
                 for key in class_attr['_field_order']:
@@ -86,12 +91,15 @@ class StructObjectMeta(type):
             # check if all attributes are flat, we set a struct format string if they are
             class_attr['_flat'] = True
             class_attr['_partial_class'] = False
+            class_attr['_non_field'] = []
             for key in class_attr['_field_order']:
                 if isinstance(class_attr[key], none):
                     class_attr['_partial_class'] = True
                 elif not class_attr[key].flat():
                     class_attr['_flat'] = False
-                    break
+
+                if not issubclass(class_attr[key].__class__, StructFieldBase):
+                    class_attr['_non_field'].append(key)
 
             if not class_attr['_partial_class']:
                 # create unpack function
@@ -111,8 +119,8 @@ class StructObjectMeta(type):
                         continue
                     elif issubclass(field.__class__, StructFieldBase):
                         partial_struct += field.format
-                        unpack_field_list += "self.{}, ".format(key)
-                        pack_field_list += "self.__class__.__dict__['{}'].prep(self), ".format(key)
+                        unpack_field_list += "self._values['{}'], ".format(key)
+                        pack_field_list += "self._values['{}'], ".format(key)
                     elif issubclass(field.__class__, StructObjectBase) and field.flat() and field._byte_order == class_attr['_byte_order']:
                         # build up list of child fields
                         _unpack, _pack  = field_list(field, key)
@@ -158,6 +166,9 @@ class StructObjectMeta(type):
                 class_attr['unpack_func_string'] = unpack_func
                 class_attr['pack_func_string'] = pack_func
 
+                print (unpack_func)
+                print (pack_func)
+
                 exec(unpack_func, globals(), class_attr)
                 exec(pack_func, globals(), class_attr)
 
@@ -199,7 +210,6 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
         return self
 
     def __init__(self, *args, **kargs):
-        super(StructObjectBase, self).__init__()
         if self._partial_class:
             raise NotImplementedError('{} has NoneType fields that must be implemented in a subclass'.format(self.__class__.__name__))
 
@@ -210,6 +220,9 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
             kargs = args[0]
             args=[]
 
+        for field_name in self._non_field:
+            self.__setattr__(field_name, None)
+
         # check for binary data
         if len(args) == 1 and isinstance(args[0], string_types + (memoryview,)):
             self.unpack(args[0])
@@ -218,6 +231,7 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
                 # assign order parameter and defaults for remainder
                 if i < len(args):
                     self.__setattr__(field_name, args[i])
+
             if len(kargs) > 0:
                 self.update(kargs)
 
@@ -225,23 +239,28 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
         if parent is not None:
             # kansas city shuffle
             # retrieve values from parent, for now we'll masquerade as this parent's child
-            if id(self) not in parent._values:
+            if self._name not in parent._values:
                 # hasn't been initialized in parent, set all values to none
                 # self.__set__(parent, None)
-                parent._values[id(self)] = {}
-            self._values = parent._values[id(self)]
+                parent._values[self._name] = {}
+            self._values = parent._values[self._name]
         return self
 
     def __set__(self, parent, value):
         # create empty dict in parent
-        if issubclass(value.__class__, self.__class__):
+        if value is None:
+            parent._values[self._name] = {}
+            for field_name in self._non_field:
+                self.__setattr__(field_name, None)
+
+        elif issubclass(value.__class__, self.__class__):
             # copy pointer to outside values
-            parent._values[id(self)] = value._values
+            parent._values[self._name] = value._values
         else:
             # find my name to tell user
             name = ''
             for key in parent._field_order:
-                if id(parent.__class__.__dict__[key]) == id(self):
+                if parent.__class__.__dict__[key]._name == self._name:
                     name = key
                     break
             raise TypeError("'{}' must be of type '{}', given '{}'".format(name, self.__class__.__name__, value.__class__.__name__))
@@ -322,14 +341,18 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
 
     def unpack(self, bindata, alt=False):
         self._unpack_from(memoryview(bindata))
-        self.unprep()
 
-    def unpack_from(self, bindata, offset = 0):
+    def unpack_from(self, bindata, offset=0):
         self._unpack_from(bindata, offset)
-        self.unprep()
 
     def pack(self):
         return self._pack()
+
+    def _pack_pack(self):
+        data = b''
+
+        data += self._structs[0].pack(self._values['x'], self._values['y'])
+        return data
 
     def field_instance(self, field_name):
         return self.__class__.__dict__[field_name]

@@ -19,9 +19,11 @@ class StructBase(object):
     _partial_class = False
     _flat = True
 
-    def __init__(self, *args, **kargs):
+    def __new__(cls, *args, **kargs):
+        self = super(StructBase, cls).__new__(cls)
         global STRUCT_OBJECT_COUNTER
         self._id = STRUCT_OBJECT_COUNTER = STRUCT_OBJECT_COUNTER + 1
+        return self
 
     @virtual
     def __get__(self, parent, parent_type=None):
