@@ -116,7 +116,7 @@ def printItem(item, tab = 0):
     rep = "{}{}: ".format("\t"*tab, key)
     if isinstance(val, structArray):
         if val.object_type.__name__ == 'ctype_char':
-            rep += "\"{}\"\n".format("".join([c.decode("ASCII") for c in val]))
+            rep += "\"{}\"\n".format("".join([c.decode("latin-1") for c in val]))
         else:
             rep += "\n"
             for i, subitem in enumerate(val):
@@ -205,7 +205,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
             
         if _bin != '':
             self.unpack(_bin)
-                    
+            
     def _index(self, name):
         "Returns the index of the given named field"
         return self._field_order.index(name)
@@ -393,12 +393,14 @@ class structObject(with_metaclass(metaclassFactory,object)):
             rep += printItem(item, 1)
         return rep
 
+
 class Empty(structObject):
     """Placeholder for fields intented to be defined in overloaded subclasses"""
     _field_order = []
     def __init__(self):
         raise NotImplementedError('None type fields must be implemented in subclasses')
-        
+
+
 class structArray(object):
     # needs to implement size, pack, unpack, get/set-item
     
