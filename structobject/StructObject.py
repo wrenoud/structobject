@@ -104,7 +104,7 @@ class StructObjectMeta(type):
             if not class_attr['_partial_class']:
                 # create unpack function
                 class_attr['_structs'] = []
-                unpack_func = 'def _unpack_from(self, data, offset = 0):\n'
+                unpack_func = 'def _unpack_from(self, data, parent, offset = 0):\n'
                 pack_func = 'def _pack(self):\n\tdata = b\'\'\n'
 
                 partial_struct = class_attr['_byte_order']
@@ -144,7 +144,7 @@ class StructObjectMeta(type):
                             partial_idx = i
 
                         # ask the child to unpack itself
-                        unpack_func += '\n\tself.{}._unpack_from(data, offset)\n'.format(key)
+                        unpack_func += '\n\tself.{}._unpack_from(data, self, offset)\n'.format(key)
                         unpack_func += '\toffset += self.{}.size\n'.format(key)
 
                         # ask the child to pack itself
@@ -257,13 +257,7 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
             # copy pointer to outside values
             parent._values[self._name] = value._values
         else:
-            # find my name to tell user
-            name = ''
-            for key in parent._field_order:
-                if parent.__class__.__dict__[key]._name == self._name:
-                    name = key
-                    break
-            raise TypeError("'{}' must be of type '{}', given '{}'".format(name, self.__class__.__name__, value.__class__.__name__))
+            raise TypeError("'{}' must be of type '{}', given '{}'".format(self._name, self.__class__.__name__, value.__class__.__name__))
 
     def __setitem__(self, key, value):
         if isinstance(key, string_types):
@@ -340,19 +334,13 @@ class StructObjectBase(with_metaclass(StructObjectMeta, StructBase)):
         return zip(self._field_order, self.values())
 
     def unpack(self, bindata, alt=False):
-        self._unpack_from(memoryview(bindata))
+        self._unpack_from(memoryview(bindata), None)
 
     def unpack_from(self, bindata, offset=0):
-        self._unpack_from(bindata, offset)
+        self._unpack_from(bindata, None, offset)
 
     def pack(self):
         return self._pack()
-
-    def _pack_pack(self):
-        data = b''
-
-        data += self._structs[0].pack(self._values['x'], self._values['y'])
-        return data
 
     def field_instance(self, field_name):
         return self.__class__.__dict__[field_name]

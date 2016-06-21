@@ -11,26 +11,36 @@ sys.path.append("..\\")
 
 from structobject import *
 
-class Point(structobject):
+class Point(StructObjectBase):
     "Basic point class"
-    _field_order = ('x','y')
-    x = ctype_double()
-    y = ctype_double()
+    x = FieldType.double()
+    y = FieldType.double()
 
-class Path(structobject):
-    _field_order = ('point_count','points')
+class Path(StructObjectBase):
     # the number of points in the path
-    point_count = ctype_uint(
-        generator = lambda self: len(self.points)
+    point_count = FieldType.uint(
+        #generator = lambda self: len(self.points)
     )
     # the points
-    points = struct_array(
-        object_type = Point,
+    points = StructArrayBase(
+        object_type = Point(),
         len = lambda self: self.point_count
     )
 
+class DoubleList(StructObjectBase):
+    count = FieldType.uint(default=6)
+    doubles = StructArrayBase(FieldType.double(), 6)
+
 class structArrayTests(unittest.TestCase):
-   
+
+    def testAppendSimpleObject(self):
+        d = DoubleList()
+
+        d.doubles.append(3)
+        d.doubles.append(4)
+
+        self.assertEqual(d.doubles[1], 4)
+
     def testAppend(self):
         p = Path()
         p.points.append(0.0,10.0)
@@ -49,13 +59,16 @@ class structArrayTests(unittest.TestCase):
         self.assertEqual(p.point_count, 2)
         
     def testObjectTypeStructFieldWOLenIssue6(self):
-        class generic_string(structobject):
-            _field_order = ('text',)
-            text=struct_array(object_type=ctype_char())
+        class generic_string(StructObjectBase):
+            text=StructArrayBase(object_type=FieldType.char())
         
         s = bytes('Hello World',"ASCII")
         o = generic_string(bytes('Hello World',"ASCII"))
-        self.assertEqual(o.text[:], [chr(x) for x in s])
-        
+        self.assertEqual(o.text[:], [bytes(chr(x), "ASCII") for x in s])
+
+    def testBadObjectType(self):
+        with self.assertRaises(Exception):
+            StructArrayBase(object_type = Point)
+
 if __name__ == '__main__':
     unittest.main()

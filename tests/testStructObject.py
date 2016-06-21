@@ -14,7 +14,7 @@ sys.path.append("..\\")
 from structobject import *
 
 class Point(StructObjectBase):
-    "Basic point class"
+    "Basic po1 class"
     x = FieldType.double()
     y = FieldType.double()
 

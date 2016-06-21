@@ -5,4 +5,5 @@ from __future__ import unicode_literals
 
 import structobject.StructField as FieldType
 from structobject.StructObject import StructObjectBase
+from structobject.StructArray import StructArrayBase
 from structobject.compatibility import *

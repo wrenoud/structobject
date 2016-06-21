@@ -73,30 +73,27 @@ class StructFieldBase(StructBase):
                 if not validator(value):
                     raise Exception("Failed validator: {} with value {}".format(validator.__name__, value))
 
-    def prep(self, parent):
+    def prep(self, value):
         """Runs Setters on value to prepare for serialization
 
         Args:
-            parent: the parent object so the descriptor can look up the value
+            value: the value to prep
         """
-        _tmp = self.__get__(parent)
-        # if self._setters is not None:
-        #     for setter in self._setters:
-        #         _tmp = setter(_tmp)
-        return _tmp
+        if self._setters is not None:
+            for setter in self._setters:
+                value = setter(value)
+        return value
 
-    def unprep(self, parent):
+    def unprep(self, value):
         """Runs Getters on deserialized value
 
         Args:
-            parent: the parent object so the descriptor can look up and set value
+            value: the value to unprep
         """
-        # if self._getters is not None:
-        #     _tmp = self.__get__(parent)
-        #     for getter in self._getters:
-        #         _tmp = getter(_tmp)
-        #     self.__set__(parent, _tmp)
-        pass
+        if self._getters is not None:
+            for getter in self._getters:
+                value = getter(value)
+        return value
 
     @property
     def size(self):
@@ -145,7 +142,7 @@ class ushort(StructFieldBase):
     _python_type = int
 
 
-class int(StructFieldBase):
+class sint(StructFieldBase):
     """signed integer"""
     format = b'i'
     _python_type = int
