@@ -2,8 +2,8 @@ import struct
 import inspect
 
 try:
-    from structObject.compatibility import with_metaclass, string_types
-    from structObject.structField import structField
+    from .compatibility import with_metaclass, string_types
+    from .structField import structField
 except:
     from compatibility import with_metaclass, string_types
     from structField import structField
@@ -62,8 +62,8 @@ class metaclassFactory(type):
             for key, val in class_attr.items():
                 # ignore private attributes and class methods (they're functions until we call type())
                 if not key.startswith('_') and \
-                    not inspect.isfunction(val) and \
-                    key not in _field_order: 
+                    not (inspect.isfunction(val) or type(val).__name__ == 'cython_function_or_method') and \
+                    key not in _field_order:
                         raise Exception("Attribute '{}' not included in '_field_order'".format(key))
 
             class_attr['_constructors'] = []
