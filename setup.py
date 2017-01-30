@@ -22,7 +22,7 @@ setup(
   author = 'Weston Renoud',
   author_email = 'wrenoud@gmail.com',
   url = GIT_REPO, # use the URL to the github repo
-  download_url = '{}/tarball/{}'.format(GIT_REPO, VERSION),
+  download_url = '{}/tarball/v{}'.format(GIT_REPO, VERSION),
   keywords = ['struct', 'binary', 'data structures'], # arbitrary keywords
   classifiers = [],
 )
