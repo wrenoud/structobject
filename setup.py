@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 def isInt(value):
-	return isinstance(value, (int,long))
+	return isinstance(value, (int,))
 
 def formatversion(major, minor, maintenance = None):
 	assert(isInt(major) and isInt(minor))
