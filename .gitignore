@@ -55,3 +55,9 @@ docs/_build/
 # editor backups
 *~
 *.kate-swp
+
+#PyCharm
+.idea/
+
+#Notebook
+.ipynb_checkpoints/
