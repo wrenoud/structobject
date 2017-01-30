@@ -11,7 +11,7 @@ def formatversion(major, minor, maintenance = None):
 		version.append(maintenance)
 	return ".".join(str(n) for n in version)
 
-VERSION = formatversion(0,0,1)
+VERSION = formatversion(1,0,0)
 GIT_REPO = "https://github.com/wrenoud/structobject"
 
 setup(
