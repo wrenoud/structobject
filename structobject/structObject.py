@@ -434,7 +434,7 @@ class structArray(object):
     def size(self):
         if issubclass(self.object_type, structField):
             return self._item_size * self.__len__()
-        elif issubclass(self.object_type, structObject):
+        else:
             size = 0
             for obj in self._values:
                 size += obj.size
@@ -446,7 +446,7 @@ class structArray(object):
             obj = self._values[key]
             if issubclass(self.object_type, structField):
                 return obj.get()
-            elif issubclass(self.object_type, structObject):
+            else:
                 return obj
         elif isinstance(key, slice):
             values = []
@@ -471,7 +471,7 @@ class structArray(object):
     def append(self, *args, **kargs):
         if issubclass(self.object_type, structField):
             obj = self.object_type(self._parent,*args)
-        elif issubclass(self.object_type, structObject):
+        else:
             obj = self.object_type(*args,**kargs)
         self._values.append(obj)
         
@@ -499,9 +499,11 @@ class structArray(object):
             values = struct.unpack(fmt, bindata[0:count*self._item_size])
             for value in values:
                 self.append(value)
-        elif issubclass(self.object_type, structObject):
+        else:
+            offset = 0
             for i in range(count):
-                self.append(memoryview(bindata)[self.size:])
+                self.append(memoryview(bindata)[offset:])
+                offset += self._values[-1].size
             
 
 def struct_array(**kargs):
