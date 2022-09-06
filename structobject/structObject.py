@@ -13,6 +13,7 @@ little_endian = '<'
 big_endian = '>'
 network = '!'
 
+
 class metaclassFactory(type):
     """Builds the subclasses of structObject"""
 
@@ -41,34 +42,34 @@ class metaclassFactory(type):
                 # superclass order assumed as subclass order
                 class_attr['_field_order'] = _base._field_order
             _field_order = class_attr['_field_order']
-            
+
             # update slots to include all superclass attributes
             if '__slots__' not in class_attr:
                 class_attr['__slots__'] = ()
             _slots = set(class_attr['__slots__'])
             for cls in _base.__mro__:
                 if cls != structObject:
-                    _slots.update(getattr(cls,"__slots__",[]))
+                    _slots.update(getattr(cls, "__slots__", []))
             class_attr['__slots__'] = list(_slots)
-            
+
             # default byte order uses native with standard sizes and no alignment
             if '_byte_order' not in class_attr and _base == structObject:
                 class_attr['_byte_order'] = native
             elif '_byte_order' not in class_attr:
                 class_attr['_byte_order'] = _base._byte_order
             _byte_order = class_attr['_byte_order']
-                
+
             # make sure attributes are included in _field_order
             for key, val in class_attr.items():
                 # ignore private attributes and class methods (they're functions until we call type())
                 if not key.startswith('_') and \
-                    not (inspect.isfunction(val) or type(val).__name__ == 'cython_function_or_method') and \
-                    key not in _field_order:
-                        raise Exception("Attribute '{}' not included in '_field_order'".format(key))
+                        not (inspect.isfunction(val) or type(val).__name__ == 'cython_function_or_method') and \
+                        key not in _field_order:
+                    raise Exception("Attribute '{}' not included in '_field_order'".format(key))
 
             class_attr['_constructors'] = []
             # makes sure attribute in _field_order are defined
-            for i,name in enumerate(_field_order):
+            for i, name in enumerate(_field_order):
                 if name in ["size"]:
                     raise Exception("'{}' is a reserved attribute".format(name))
                 if name not in class_attr:
@@ -79,7 +80,7 @@ class metaclassFactory(type):
                         raise Exception("Attribute '{}' included in '_field_order' but not defined".format(name))
                 else:
                     constructor = class_attr[name]
-                    del(class_attr[name])
+                    del (class_attr[name])
                 if constructor == None:
                     class_attr['_constructors'].append(Empty)
                 else:
@@ -89,19 +90,20 @@ class metaclassFactory(type):
             class_attr['_segments'] = []
             fmt = _byte_order
             start = 0
-            for i,name in enumerate(_field_order):
+            for i, name in enumerate(_field_order):
                 constructor = class_attr['_constructors'][i]
                 if issubclass(constructor, structField) and not constructor._variable_length:
                     fmt += constructor.fmt
-                else: #if issubclass(constructor, (structObject,structArray)):
+                else:  # if issubclass(constructor, (structObject,structArray)):
                     if len(fmt) > 1:
-                        class_attr['_segments'].append(structSegment(fmt,start,i))
+                        class_attr['_segments'].append(structSegment(fmt, start, i))
                         fmt = _byte_order
                     class_attr['_segments'].append(i)
                     start = i + 1
             if len(fmt) > 1:
-                class_attr['_segments'].append(structSegment(fmt,start,i+1))
+                class_attr['_segments'].append(structSegment(fmt, start, i + 1))
         return type.__new__(metaclass, class_name, class_bases, class_attr)
+
 
 class structSegment(struct.Struct):
     __slots__ = ('slice')
@@ -110,10 +112,11 @@ class structSegment(struct.Struct):
         super(structSegment, self).__init__(fmt)
         self.slice = slice(start, end)
 
-def printItem(item, tab = 0):
+
+def printItem(item, tab=0):
     key = item[0]
     val = item[1]
-    rep = "{}{}: ".format("\t"*tab, key)
+    rep = "{}{}: ".format("\t" * tab, key)
     if isinstance(val, structArray):
         if val.object_type.__name__ == 'ctype_char':
             rep += "\"{}\"\n".format("".join([c.decode("latin-1") for c in val]))
@@ -121,11 +124,11 @@ def printItem(item, tab = 0):
             rep += "\n"
             for i, subitem in enumerate(val):
                 if isinstance(subitem, structObject):
-                    rep += "{}[{}]\n".format("\t"*(tab+1), i)
+                    rep += "{}[{}]\n".format("\t" * (tab + 1), i)
                     for subsubitem in subitem.items():
                         rep += printItem(subsubitem, tab + 2)
                 else:
-                    rep +="{}[{}] {}\n".format("\t"*(tab+1), i, subitem)
+                    rep += "{}[{}] {}\n".format("\t" * (tab + 1), i, subitem)
     elif isinstance(val, structObject):
         rep += "\n"
         for subitem in val.items():
@@ -140,7 +143,8 @@ def printItem(item, tab = 0):
             rep += "{}\n".format(val)
     return rep
 
-class structObject(with_metaclass(metaclassFactory,object)):
+
+class structObject(with_metaclass(metaclassFactory, object)):
     """The base class that scaffolding is used to build out
 
     Fields attributes:
@@ -164,55 +168,56 @@ class structObject(with_metaclass(metaclassFactory,object)):
         # handle special cases where list or dict used
         if len(args) == 1 and isinstance(args[0], (list, tuple)):
             args = args[0]
-        elif len(args) == 1 and isinstance(args[0],dict):
+        elif len(args) == 1 and isinstance(args[0], dict):
             kargs = args[0]
-            args=[]
+            args = []
 
         # TODO this is the dumb way to populate, generates defaults first
         _bin = ''
         if len(args) == 1 and isinstance(args[0], string_types + (memoryview,)):
             _bin = args[0]
-            args= []
-                
+            args = []
+
         # TODO check that len(args[0]) <= len(self)
         if len(args) == 0 and len(kargs) == 0:
             for i, name in enumerate(self._field_order):
                 constructor = self._constructors[i]
-                if issubclass(constructor, (structField,structArray)):
+                if issubclass(constructor, (structField, structArray)):
                     self._values.append(constructor(self))
-                else: #if issubclass(constructor, structObject):
+                else:  # if issubclass(constructor, structObject):
                     self._values.append(constructor())
         else:
-            for i,name in enumerate(self._field_order):
+            for i, name in enumerate(self._field_order):
                 # assign order parameter and defaults for remainder
                 constructor = self._constructors[i]
                 if i < len(args):
                     value = args[i]
                     if issubclass(constructor, structField):
-                        self._values.append(constructor(self,value))
+                        self._values.append(constructor(self, value))
                     elif issubclass(constructor, structObject):
                         if isinstance(value, constructor):
                             self._values.append(value)
                         else:
-                            raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
+                            raise TypeError("'{}' must be of type '{}', given '{}'".format(name, constructor.__name__,
+                                                                                           value.__class__.__name__))
                 else:
-                    if issubclass(constructor, (structField,structArray)):
+                    if issubclass(constructor, (structField, structArray)):
                         self._values.append(constructor(self))
-                    else: #if issubclass(constructor, structObject):
+                    else:  # if issubclass(constructor, structObject):
                         self._values.append(constructor())
             if len(kargs) > 0:
                 self.update(kargs)
-            
+
         if _bin != '':
             self.unpack(_bin)
-            
+
     def _index(self, name):
         "Returns the index of the given named field"
         return self._field_order.index(name)
-    
+
     def __len__(self):
         return len(self._field_order)
-    
+
     def _size(self):
         # returns the binary length, accessable through object attribute .size
         s = 0
@@ -222,25 +227,25 @@ class structObject(with_metaclass(metaclassFactory,object)):
             elif isinstance(seg, int):
                 s += self._values[seg].size
         return s
-            
+
     def __getattr__(self, name):
         if name in self._field_order:
             i = self._index(name)
             obj = self._values[i]
             if issubclass(obj.__class__, structField):
                 return obj.get()
-            else: #if issubclass(obj.__class__, (structObject, structArray)):
+            else:  # if issubclass(obj.__class__, (structObject, structArray)):
                 return obj
         elif name == 'size':
             return self._size()
         else:
             return self.__getattribute__(name)
-            #return self.__class__.__dict__[name].__get__(self)
+            # return self.__class__.__dict__[name].__get__(self)
         raise AttributeError("Attribute '{}' undefined for structObject".format(name))
-            
+
     def __setattr__(self, name, value):
         if name.startswith('_'):
-            object.__setattr__(self,name,value)
+            object.__setattr__(self, name, value)
         elif name in self._field_order:
             i = self._index(name)
             constructor = self._constructors[i]
@@ -248,15 +253,16 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 self._values[i].set(value)
             elif issubclass(constructor, structObject):
                 if isinstance(value, constructor):
-                    self._values[i] = value # probably setting a substructure
+                    self._values[i] = value  # probably setting a substructure
                 else:
-                    raise TypeError("'{}' must be of type '{}', given '{}'".format(name,constructor.__name__, value.__class__.__name__))
+                    raise TypeError("'{}' must be of type '{}', given '{}'".format(name, constructor.__name__,
+                                                                                   value.__class__.__name__))
         elif name in self.__slots__:
-            object.__setattr__(self,name,value)
-            #self.__class__.__dict__[name].__set__(self, value)
+            object.__setattr__(self, name, value)
+            # self.__class__.__dict__[name].__set__(self, value)
         else:
             raise AttributeError("Attribute '{}' undefined for structObject".format(name))
-            
+
     def __getitem__(self, key):
         if isinstance(key, string_types):
             if '.' in key:
@@ -284,7 +290,8 @@ class structObject(with_metaclass(metaclassFactory,object)):
         else:
             raise Exception("Unrecognized index: {}".format(key))
         # support substructures
-            # i.e. (test) obj.field.subfield1 == obj['field.subfield1']
+        # i.e. (test) obj.field.subfield1 == obj['field.subfield1']
+
     def __setitem__(self, key, item):
         if isinstance(key, string_types):
             if '.' in key:
@@ -306,18 +313,22 @@ class structObject(with_metaclass(metaclassFactory,object)):
                 self.__setattr__(_field, item[i])
         else:
             raise Exception("Unrecognized index: {}".format(key))
-            
-    #def __iter__(self): pass
-    #def __contains__(self, key): pass
-    
-    def items(self): return zip(self.keys(),self.values())
-    def keys(self): return self._field_order[:]
+
+    # def __iter__(self): pass
+    # def __contains__(self, key): pass
+
+    def items(self):
+        return zip(self.keys(), self.values())
+
+    def keys(self):
+        return self._field_order[:]
+
     def values(self):
         l = []
         for name in self._field_order:
             l.append(self.__getattr__(name))
         return l
-        #return [self.__getattr__(name) for name in self._field_order]
+        # return [self.__getattr__(name) for name in self._field_order]
 
     def update(self, *args, **kargs):
         "Same functionality as dict.update(). "
@@ -339,27 +350,27 @@ class structObject(with_metaclass(metaclassFactory,object)):
             raise TypeError('update expected at most 1 arguments, got {}'.format(len(args)))
 
         for key, value in kargs.items():
-            self.__setattr__(key,value)
-    
+            self.__setattr__(key, value)
+
     def unpack(self, bindata):
         self._bindata = bindata
         offset = 0
         for seg in self._segments:
             if isinstance(seg, structSegment):
-                values = seg.unpack(memoryview(bindata)[offset:offset+seg.size])
+                values = seg.unpack(memoryview(bindata)[offset:offset + seg.size])
                 for i, field in enumerate(self._values[seg.slice]):
                     try:
                         field.unprep(values[i])
                     except Exception as e:
-                        print (self.__class__.__name__)
+                        print(self.__class__.__name__)
                         raise e
             elif isinstance(seg, int):
                 seg = self._values[seg]
                 seg.unpack(memoryview(bindata)[offset:])
             offset += seg.size
 
-        #log(self.__class__.__name__, offset, self.size)
-    
+        # log(self.__class__.__name__, offset, self.size)
+
     def pack(self):
         s = bytes("", "ASCII")
         for seg in self._segments:
@@ -383,6 +394,7 @@ class structObject(with_metaclass(metaclassFactory,object)):
             elif isinstance(v, structObject):
                 s += v._pack()
         return s
+
     # def iteritems(self): pass
     # def iterkeys(self): pass
     # def itervalues(self): pass
@@ -397,39 +409,41 @@ class structObject(with_metaclass(metaclassFactory,object)):
 class Empty(structObject):
     """Placeholder for fields intented to be defined in overloaded subclasses"""
     _field_order = []
+
     def __init__(self):
         raise NotImplementedError('None type fields must be implemented in subclasses')
 
 
 class structArray(object):
     # needs to implement size, pack, unpack, get/set-item
-    
+
     __slots__ = (
         'object_type',
-        '_variable_length', # used for future support of array types, indicates field should not be included in static segment
+        '_variable_length',
+        # used for future support of array types, indicates field should not be included in static segment
         '_parent',
         '_values',
         '_item_size',
         'len'
     )
-    
+
     def __init__(self, _parent):
         self._parent = _parent
         self._values = []
-        
+
         try:
             self.len
         except:
             self.len = None
-            
+
         if isinstance(self.len, int):
             self._variable_length = False
         else:
             self._variable_length = True
-        
+
     def __len__(self):
-        return len(self._values)    
-    
+        return len(self._values)
+
     @property
     def size(self):
         if issubclass(self.object_type, structField):
@@ -439,8 +453,7 @@ class structArray(object):
             for obj in self._values:
                 size += obj.size
             return size
-        
-        
+
     def __getitem__(self, key):
         if isinstance(key, int):
             obj = self._values[key]
@@ -455,7 +468,7 @@ class structArray(object):
             return values
         else:
             raise Exception("Unrecognized index: {}".format(key))
-        
+
     def __setitem__(self, key, value):
         if isinstance(key, int):
             if key < len(self._values):
@@ -470,14 +483,14 @@ class structArray(object):
 
     def append(self, *args, **kargs):
         if issubclass(self.object_type, structField):
-            obj = self.object_type(self._parent,*args)
+            obj = self.object_type(self._parent, *args)
         else:
-            obj = self.object_type(*args,**kargs)
+            obj = self.object_type(*args, **kargs)
         self._values.append(obj)
-        
+
     def pack(self):
         if issubclass(self.object_type, structField):
-            return struct.pack(str(self.__len__())+self.object_type.fmt, *self._values)
+            return struct.pack(str(self.__len__()) + self.object_type.fmt, *self._values)
         elif issubclass(self.object_type, structObject):
             s = bytes("", "ASCII")
             for val in self._values:
@@ -492,11 +505,11 @@ class structArray(object):
                 count = self.len[0](self._parent)
         else:
             count = len(bindata) - len(bindata) % self._item_size
-        
+
         if issubclass(self.object_type, structField):
             # lets just unpack these all at once
-            fmt = str(count)+self.object_type.fmt
-            values = struct.unpack(fmt, bindata[0:count*self._item_size])
+            fmt = str(count) + self.object_type.fmt
+            values = struct.unpack(fmt, bindata[0:count * self._item_size])
             for value in values:
                 self.append(value)
         else:
@@ -504,20 +517,19 @@ class structArray(object):
             for i in range(count):
                 self.append(memoryview(bindata)[offset:])
                 offset += self._values[-1].size
-            
+
 
 def struct_array(**kargs):
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
     }
     obj_dict.update(kargs)
     if issubclass(obj_dict['object_type'], structField):
         obj_dict['_item_size'] = struct.calcsize(obj_dict['object_type'].fmt)
     elif issubclass(obj_dict['object_type'], structObject):
         obj_dict['_item_size'] = obj_dict['object_type']().size
-    
+
     if 'len' in obj_dict:
-        obj_dict['len'] = (obj_dict['len'],) # protect from becomeing class method
-    
-    return type('struct_array',(structArray,), obj_dict)
-    
+        obj_dict['len'] = (obj_dict['len'],)  # protect from becomeing class method
+
+    return type('struct_array', (structArray,), obj_dict)

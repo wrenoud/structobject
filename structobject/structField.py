@@ -12,6 +12,7 @@ myfield = myfieldclass()
 myfieldclass()
 """
 
+
 class structField(object):
     """
 
@@ -27,17 +28,17 @@ class structField(object):
     value - initializing with a value sets the field as static
     """
     __slots__ = (
-    '_parent',
-    #'fmt',
-    'python_type',
-    'value',
-    'getter',
-    'setter',
-    'generator',
-    'validator',
-    'doc')
-    
-    _static = False # bool, indicates weith value can be set
+        '_parent',
+        # 'fmt',
+        'python_type',
+        'value',
+        'getter',
+        'setter',
+        'generator',
+        'validator',
+        'doc')
+
+    _static = False  # bool, indicates weith value can be set
 
     def __init__(self, _parent, init_value=None):
         self._parent = _parent
@@ -48,7 +49,6 @@ class structField(object):
         # self.getter = [lambda x: x,]
         # self.generator = None
         # self.validator = []
-
 
         # note that some instances may have generators, but we won't block setting
         # the value until after initialization in case this is a value being read
@@ -65,19 +65,17 @@ class structField(object):
         elif init_value != None and self.value != init_value:
             raise Exception("Can't store value for static field")
 
-                            
     def get(self, raw=False):
-        #if self.generator != None && raw == False:
+        # if self.generator != None && raw == False:
         #    return self.generator[0](self._parent)
-        #else:
-            return self.value
-
+        # else:
+        return self.value
 
     def set(self, value):
         if self._static:
             raise AttributeError('Static field is not writeable')
-        #elif self.generator != None:
-            #raise AttributeError('Generated field is not writeable')
+        # elif self.generator != None:
+        # raise AttributeError('Generated field is not writeable')
         else:
             if self.validator is not None:
                 for val in self.validator:
@@ -99,7 +97,7 @@ class structField(object):
             raise Warning("{} is not of type {}, trying coercion".format(self.get(), type(self.python_type())))
             _tmp = self.python_type(_tmp)
         return _tmp
-        
+
     def unprep(self, value):
         if self.getter is not None:
             _tmp = self.getter[0](value)
@@ -107,24 +105,28 @@ class structField(object):
             _tmp = value
         if self._static:
             if _tmp != self.get():
-                raise Exception("Value ({}) does not match expected ({}) {}".format(value, self.get(), self.__class__.__name__))
-            else: pass # looks good
+                raise Exception(
+                    "Value ({}) does not match expected ({}) {}".format(value, self.get(), self.__class__.__name__))
+            else:
+                pass  # looks good
         else:
             self.set(_tmp)
-        #TODO generator
-        #TODO if static should match value
+        # TODO generator
+        # TODO if static should match value
+
 
 # attributes (passed into the factories as named parameters) that all
 # subclassses have in common
 _standard_parameters = [
-        'len',
-        'value',
-        'getter',
-        'setter',
-        'generator',
-        'validator',
-        'doc']
-    
+    'len',
+    'value',
+    'getter',
+    'setter',
+    'generator',
+    'validator',
+    'doc']
+
+
 def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
     """Utility function for the structField factory functions.
     
@@ -160,166 +162,180 @@ def attrib_housekeeping(default_attrib, user_attrib, special_attrib):
 
     default_attrib["_variable_length"] = False
 
+
 def ctype_pad(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'x',
         'default': 0x00,
         'python_type': str,
         'doc': 'padding byte',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_pad',(structField,), obj_dict)
-    
+    return type('ctype_pad', (structField,), obj_dict)
+
+
 def ctype_char(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'c',
         'default': 0x00,
         'python_type': str,
         'doc': 'string of length 1',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_char',(structField,), obj_dict)
-        
+    return type('ctype_char', (structField,), obj_dict)
+
+
 def ctype_schar(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'b',
         'default': 0,
         'python_type': int,
         'doc': 'signed char',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_schar',(structField,), obj_dict)
-        
+    return type('ctype_schar', (structField,), obj_dict)
+
+
 def ctype_uchar(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'B',
         'default': 0,
         'python_type': int,
         'doc': 'unsigned char',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_uchar',(structField,), obj_dict)
-        
+    return type('ctype_uchar', (structField,), obj_dict)
+
+
 def ctype_bool(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': '?',
         'default': False,
         'python_type': bool,
         'doc': 'boolean value',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_bool',(structField,), obj_dict)
-        
+    return type('ctype_bool', (structField,), obj_dict)
+
+
 def ctype_short(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'h',
         'default': 0,
         'python_type': int,
         'doc': 'short',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_short',(structField,), obj_dict)
-        
+    return type('ctype_short', (structField,), obj_dict)
+
+
 def ctype_ushort(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'H',
         'default': 0,
         'python_type': int,
         'doc': 'unsigned short',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_ushort',(structField,), obj_dict)
-        
+    return type('ctype_ushort', (structField,), obj_dict)
+
+
 def ctype_int(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'i',
         'default': 0,
         'python_type': int,
         'doc': 'signed integer',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_int',(structField,), obj_dict)
-        
+    return type('ctype_int', (structField,), obj_dict)
+
+
 def ctype_uint(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'I',
         'default': 0,
         'python_type': int,
         'doc': 'unsigned integer',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_uint',(structField,), obj_dict)
-        
+    return type('ctype_uint', (structField,), obj_dict)
+
+
 def ctype_long(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'l',
         'default': 0,
         'python_type': int,
         'doc': 'signed long',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_long',(structField,), obj_dict)
+    return type('ctype_long', (structField,), obj_dict)
+
 
 def ctype_ulong(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'L',
         'default': 0,
         'python_type': int,
         'doc': 'unsigned long',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_ulong',(structField,), obj_dict)
-        
+    return type('ctype_ulong', (structField,), obj_dict)
+
+
 def ctype_double(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'd',
         'default': 0.0,
         'python_type': float,
         'doc': 'double',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_double',(structField,), obj_dict)
-        
+    return type('ctype_double', (structField,), obj_dict)
+
+
 def ctype_float(**kargs):
     special_parameters = []
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 'f',
         'default': 0.0,
         'python_type': float,
         'doc': 'float',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_float',(structField,), obj_dict)
-        
+    return type('ctype_float', (structField,), obj_dict)
+
+
 def ctype_string(**kargs):
     special_parameters = ['len']
     obj_dict = {
-        '__slots__':(),
+        '__slots__': (),
         'fmt': 's',
         'default': 0x00,
         'len': 1,
@@ -327,5 +343,4 @@ def ctype_string(**kargs):
         'doc': 'string',
     }
     attrib_housekeeping(obj_dict, kargs, special_parameters)
-    return type('ctype_string',(structField,), obj_dict)
-        
+    return type('ctype_string', (structField,), obj_dict)
